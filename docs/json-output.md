@@ -11,7 +11,7 @@ These conventions are a **stable contract** for scripting. Field names are snake
 | Property | `property` (name, `"present-value"`), `property_id` (number, `85`) and, when an array index was used, `index`. A property without a name is its number as a string |
 | Value | a **Value** object, below |
 | Enumerations in results | the name and the number side by side: `event_state` / `event_state_id`, `segmentation` / `segmentation_id`, `units` / `units_id` |
-| Times | `timestamp`: when a record arrived, RFC 3339 with milliseconds, UTC. Time stamps **of the device** (`event_time`, `time_stamps`, the `timestamp` of a trend log record, `local_date`, `local_time`) are text as the device sent them: its local time, without a zone |
+| Times | `timestamp`: when bacnetctl printed the record, RFC 3339 with milliseconds, UTC. That is not the time of arrival: a notification that waited in the queue is stamped later, and the order of records holds per object only. Time stamps **of the device** (`event_time`, `time_stamps`, the `timestamp` of a trend log record, `local_date`, `local_time`) are text as the device sent them: its local time, without a zone |
 | Durations | `duration_ms`, `rtt_ms` (numbers, milliseconds with fractions) |
 | Repeated rows | `devices`, `objects`, `rows`, `properties`, `alarms`, `records`, `routers`, `entries`, `names`: **arrays of objects**, empty arrays rather than null |
 | A row that failed | `error` object (`kind`, `code`, `message`, `bacnet`); omitted when the row is fine |
