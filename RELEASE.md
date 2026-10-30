@@ -2,7 +2,7 @@
 
 ## v0.2.1
 
-**Date:** unreleased  
+**Date:** 2026-10-30  
 **Previous release:** v0.2.0
 
 ### Summary
@@ -45,7 +45,7 @@ Every other exit code is unchanged. See [docs/exitcodes.md](docs/exitcodes.md).
 
 ## v0.1.0
 
-**Date:** unreleased  
+**Date:** 2026-10-30  
 **Previous release:** none
 
 ### Summary
