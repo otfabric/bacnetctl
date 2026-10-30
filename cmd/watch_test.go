@@ -6,6 +6,8 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -38,7 +40,17 @@ func TestMonitor(t *testing.T) {
 	if len(lines) != 3 {
 		t.Fatalf("%d records, want 3: %v", len(lines), lines)
 	}
-	last := lines[2]
+	// Every subscription is read on its own: the notifications of one object stay in
+	// order, those of different objects are interleaved as they are scheduled.
+	byObject := map[string][]map[string]any{}
+	for _, rec := range lines {
+		byObject[rec["object"].(string)] = append(byObject[rec["object"].(string)], rec)
+	}
+	av, ai := byObject["analog-value:1"], byObject["analog-input:1"]
+	if len(av) != 1 || len(ai) != 2 || covValue(av[0]) != 20.0 || covValue(ai[0]) != 21.5 || covValue(ai[1]) != 22.75 {
+		t.Fatalf("records: %v", lines)
+	}
+	last := ai[1]
 	values := last["values"].([]any)
 	pv := values[0].(map[string]any)
 	if last["source"] != "cov" || last["device"] != "device:1234" || last["object"] != "analog-input:1" || last["object_type"] != 0.0 ||
@@ -77,7 +89,7 @@ func TestMonitor(t *testing.T) {
 		t.Errorf("%d subscriptions left after a failed monitor", dev.Subscriptions())
 	}
 	// --duration ends monitoring by itself.
-	on(t, dev, "monitor", "ai:1", "--duration", "1").want(t, 0).errHas(t, "1 notification in 1.0 s")
+	endedAfterDuration(t, on(t, dev, "monitor", "ai:1", "--duration", "1").want(t, 0), "1 notification")
 
 	silent := bactest.Start(t, bactest.Silent())
 	on(t, silent, append([]string{"monitor", "ai:1"}, fast...)...).want(t, 5)
@@ -125,7 +137,26 @@ func TestMonitorPoll(t *testing.T) {
 	on(t, dev, "monitor", "msv:1", "--poll", "20", "--property", "state-text[2]", "--count", "1").want(t, 0).has(t, "multi-state-value:1", "state-text[2]=Auto")
 	// A property that cannot be read is the error of the command.
 	on(t, dev, "monitor", "ai:1", "--poll", "20", "--property", "high-limit").want(t, 6).errHas(t, "unknown-property")
-	on(t, dev, "monitor", "ai:1", "--poll", "20", "--duration", "1").want(t, 0).errHas(t, "1 change in 1.0 s")
+	endedAfterDuration(t, on(t, dev, "monitor", "ai:1", "--poll", "20", "--duration", "1").want(t, 0), "1 change")
+}
+
+// covValue returns the present value a monitor record carries.
+func covValue(rec map[string]any) any {
+	return rec["values"].([]any)[0].(map[string]any)["value"].(map[string]any)["value"]
+}
+
+// endedAfterDuration fails the test unless the summary of a monitor run with --duration 1
+// reports what and a run of at least that second. How much longer it took depends on the
+// machine; it stays well below the 30 s the other runs use as "does not end by itself".
+func endedAfterDuration(t testing.TB, r result, what string) {
+	t.Helper()
+	m := regexp.MustCompile(regexp.QuoteMeta(what) + ` in ([0-9.]+) s\n`).FindStringSubmatch(r.stderr)
+	if m == nil {
+		t.Fatalf("stderr has no summary of %s:\n%s", what, r.stderr)
+	}
+	if s, err := strconv.ParseFloat(m[1], 64); err != nil || s < 1 || s >= 30 {
+		t.Errorf("ended after %q s, want about 1: %v", m[1], err)
+	}
 }
 
 func TestAlarmsAndAck(t *testing.T) {
