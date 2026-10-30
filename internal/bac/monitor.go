@@ -110,6 +110,30 @@ func stopTimer(seconds uint32) (<-chan time.Time, func()) {
 	return t.C, func() { t.Stop() }
 }
 
+// forwardCOV passes the notifications of one subscription from in to out until in is
+// closed or done is, and reports a failed renewal to warn. The client marks the next event
+// after a loss with Gap, and that may be a state change, which is not passed on: the mark
+// moves to the next notification.
+func forwardCOV(in <-chan client.SubscriptionEvent, out chan<- client.SubscriptionEvent, done <-chan struct{}, warn func(error)) {
+	gap := false
+	for ev := range in {
+		gap = gap || ev.Gap
+		if ev.Notification == nil {
+			if ev.Err != nil {
+				warn(ev.Err)
+			}
+			continue
+		}
+		ev.Gap = gap
+		select {
+		case out <- ev:
+			gap = false
+		case <-done:
+			return
+		}
+	}
+}
+
 // Monitor subscribes to the changes of value of objects and emits every notification,
 // until ctx ends, --duration has passed or --count notifications were emitted. With
 // --poll it reads the property at an interval instead. The subscriptions are cancelled on
@@ -177,20 +201,11 @@ func Monitor(ctx context.Context, cfg *config.MonitorConfig, args []string, logw
 		wg.Add(1)
 		go func(id bacnet.ObjectIdentifier) {
 			defer wg.Done()
-			for ev := range sub.Events() {
-				if ev.Notification == nil && ev.Err == nil {
-					continue
+			forwardCOV(sub.Events(), events, done, func(err error) {
+				if logw != nil {
+					_, _ = fmt.Fprintf(logw, "warning: %s: renewing the subscription failed: %v\n", ObjectName(id), WrapError(err))
 				}
-				if ev.Notification == nil && logw != nil {
-					_, _ = fmt.Fprintf(logw, "warning: %s: renewing the subscription failed: %v\n", ObjectName(id), WrapError(ev.Err))
-					continue
-				}
-				select {
-				case events <- ev:
-				case <-done:
-					return
-				}
-			}
+			})
 		}(id)
 	}
 

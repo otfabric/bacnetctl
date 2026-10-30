@@ -1,5 +1,24 @@
 # bacnetctl Releases
 
+## v0.2.1
+
+**Date:** unreleased  
+**Previous release:** v0.2.0
+
+### Summary
+
+`monitor` no longer hides that notifications were lost.
+
+### Fixes
+
+- **`monitor`:** when notifications were lost because output could not keep up, and a subscription renewal came before the next notification, that notification was printed without the `gap` field (text: "notifications were lost before this one"). It now carries the mark.
+
+### Documentation
+
+- `docs/json-output.md`: `timestamp` is when a record is printed, not when it arrived, and the order of records holds per object only. The output itself did not change.
+
+---
+
 ## v0.2.0
 
 **Date:** 2026-10-30

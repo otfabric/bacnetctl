@@ -194,10 +194,12 @@ func TestEnvironment(t *testing.T) {
 	// A flag wins over the environment.
 	run(t, "read", "ai:1", "pv", "--format", "text").want(t, 0).has(t, "21.5\n").lacks(t, "{")
 	t.Setenv("BACNETCTL_DEVICE", bactest.Start(t, bactest.Silent()).Target())
+	run(t, "read", "ai:1", "pv", "--device", dev.Target()).want(t, 0)
+	// The short timeout is for the device that never answers: a live one on a busy
+	// machine can miss it.
 	t.Setenv("BACNETCTL_TIMEOUT", "100")
 	t.Setenv("BACNETCTL_RETRIES", "0")
 	run(t, "read", "ai:1", "pv").want(t, 5)
-	run(t, "read", "ai:1", "pv", "--device", dev.Target()).want(t, 0)
 
 	// A malformed value is an error before anything runs, whatever the command.
 	t.Setenv("BACNETCTL_LOCAL_PORT", "banana")
