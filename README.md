@@ -147,7 +147,7 @@ An object is written **type:instance** (`analog-input:1`, or short `ai:1`), a pr
 | Device management | ReinitializeDevice and DeviceCommunicationControl, behind an explicit `--yes-i-am-sure`, with an optional password that is never printed. |
 | Decode           | Offline decoding of a BACnet/IP datagram from hex: BVLC, NPDU, APDU and the service with its parameters.                  |
 | Names            | Object types and properties by name, short form (`ai`, `pv`) or number; `types` and `properties` list them. Engineering units, event states and status flags by name. Character strings in UTF-8, UCS-2, UCS-4 and ISO 8859-1. |
-| `--format`       | Every command that prints a result accepts **`--format text\|json\|table`** (or **`BACNETCTL_OUTPUT_FORMAT`**); streams write JSON Lines. |
+| `--format`       | Every command that prints a result accepts **`--format text\|json\|table`** (or **`BACNETCTL_FORMAT`**); streams write JSON Lines. |
 | `--debug`        | The diagnostics of the BACnet client (dropped and unexpected frames, routes) and the causes of an error, to stderr.       |
 | Completion       | Shell completion for bash, zsh, fish and PowerShell: object types, property names and the values of flags.                |
 
@@ -422,7 +422,7 @@ Every command has `--help`, with a description and examples.
 
 **Global flag:** `--debug` — log the diagnostics of the BACnet client to stderr (frames that were dropped or unexpected, routes that were learned, the socket that was bound) and print the chain of causes after an error.
 
-**Output format (`--format`):** every command that prints a result accepts **`--format text`** (default), **`json`** or **`table`**, or set **`BACNETCTL_OUTPUT_FORMAT`**. It controls **only** the result on **stdout**. Progress, summaries and diagnostics go to **stderr**, so stdout can be piped or parsed as it is. The JSON shapes are a stable contract: see [docs/json-output.md](docs/json-output.md).
+**Output format (`--format`):** every command that prints a result accepts **`--format text`** (default), **`json`** or **`table`**, or set **`BACNETCTL_FORMAT`**. It controls **only** the result on **stdout**. Progress, summaries and diagnostics go to **stderr**, so stdout can be piped or parsed as it is. The JSON shapes are a stable contract: see [docs/json-output.md](docs/json-output.md).
 
 **Streams:** `monitor` and `events` write one record as it happens: one line (**text**), one JSON object per line (**json**, JSON Lines) or table rows (**table**). They run until interrupted with Ctrl-C, which ends them normally.
 
@@ -437,7 +437,9 @@ Every command has `--help`, with a description and examples.
 | 5 | Timeout: no answer; for a write, the outcome is unknown |
 | 6 | The device refused the request (Error, Reject, Abort), or a protocol error |
 | 7 | Partial success: a valid result that holds failures |
+| 8 | Unsupported by the peer |
 | 10 | Output or internal error |
+| 130 | Interrupted before a result |
 
 See [docs/exitcodes.md](docs/exitcodes.md) for the details and the `code` values.
 
@@ -910,7 +912,7 @@ The hex is the UDP payload, as copied from a packet capture; spaces, colons and 
 
 ## Environment Variable Configuration
 
-Every flag that is part of a command's configuration can also be set through an environment variable, which is convenient for automation and for flags you would otherwise repeat on every command (`BACNETCTL_DEVICE`, `BACNETCTL_OUTPUT_FORMAT`). A flag on the command line wins over the environment. A value that cannot be parsed (a port that is not a number) stops bacnetctl at startup. The global flag `--debug` and the confirmation `--yes-i-am-sure` have no environment variable.
+Every flag that is part of a command's configuration can also be set through an environment variable, which is convenient for automation and for flags you would otherwise repeat on every command (`BACNETCTL_DEVICE`, `BACNETCTL_FORMAT`). A flag on the command line wins over the environment. A value that cannot be parsed (a port that is not a number) stops bacnetctl at startup. The global flag `--debug` and the confirmation `--yes-i-am-sure` have no environment variable.
 
 ```console
 export BACNETCTL_DEVICE=192.168.1.20
@@ -953,7 +955,7 @@ bacnetctl read analog-input:1 present-value
 | **BACNETCTL_NETWORK** | uint16 | BACnet network number of a device behind a router (0 = none) | `--network` | 0 |
 | **BACNETCTL_OBJECT** | string | **`whohas`**: object identifier to look for | `--object` | |
 | **BACNETCTL_OUTPUT** | string | **`file get`**: file to write (`-` = stdout) | `--output` | |
-| **BACNETCTL_OUTPUT_FORMAT** | string | Output format: text, json or table | `--format` | text |
+| **BACNETCTL_FORMAT** | string | (`BACNETCTL_OUTPUT_FORMAT` stays accepted) Output format: text, json or table | `--format` | text |
 | **BACNETCTL_PASSWORD** | string | **`reinitialize`**, **`comm-control`**: password of the device. Read when the command runs; never shown in `--help` or in output | `--password` | |
 | **BACNETCTL_POLL** | uint32 | **`monitor`**: poll every this many ms instead of subscribing (0 = subscribe) | `--poll` | 0 |
 | **BACNETCTL_PRIORITY** | uint8 | **`write`**: command priority 1-16 (0 = none); **`release`**: the priority to relinquish | `--priority` | 0 |
@@ -1084,7 +1086,7 @@ No. bacnetctl speaks BACnet/IP over IPv4. MS/TP devices are reached through a BA
 
 ### How do I use bacnetctl in scripts and CI?
 
-Pass `--format json` (or set `BACNETCTL_OUTPUT_FORMAT=json`). Progress goes to stderr, the result goes to stdout, and a failure returns one JSON error object with a stable exit code, whatever went wrong and however early. `bacnetctl version --format json` tells a script which build it runs. `bacnetctl read … present-value` in text format prints the bare value. See [General CLI usage](#general-cli-usage), [docs/json-output.md](docs/json-output.md) and [docs/exitcodes.md](docs/exitcodes.md).
+Pass `--format json` (or set `BACNETCTL_FORMAT=json`). Progress goes to stderr, the result goes to stdout, and a failure returns one JSON error object with a stable exit code, whatever went wrong and however early. `bacnetctl version --format json` tells a script which build it runs. `bacnetctl read … present-value` in text format prints the bare value. See [General CLI usage](#general-cli-usage), [docs/json-output.md](docs/json-output.md) and [docs/exitcodes.md](docs/exitcodes.md).
 
 ---
 

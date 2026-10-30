@@ -15,7 +15,7 @@ These conventions are a **stable contract** for scripting. Field names are snake
 | Durations | `duration_ms`, `rtt_ms` (numbers, milliseconds with fractions) |
 | Repeated rows | `devices`, `objects`, `rows`, `properties`, `alarms`, `records`, `routers`, `entries`, `names`: **arrays of objects**, empty arrays rather than null |
 | A row that failed | `error` object (`kind`, `code`, `message`, `bacnet`); omitted when the row is fine |
-| Fatal error | one object `{"error": {"kind", "code", "message", "bacnet"}}` on stdout, nothing else, also when the invocation itself is wrong (an unknown flag, a missing argument) and JSON was asked for with `--format json` or `BACNETCTL_OUTPUT_FORMAT=json`; see [exitcodes.md](exitcodes.md) |
+| Fatal error | one object `{"error": {"kind", "code", "message", "bacnet"}}` on stdout, nothing else, also when the invocation itself is wrong (an unknown flag, a missing argument) and JSON was asked for with `--format json` or `BACNETCTL_FORMAT=json`; see [exitcodes.md](exitcodes.md) |
 
 ## Value
 
@@ -51,7 +51,7 @@ Used for a fatal error (`{"error": {…}}`) and for a row that failed.
 
 | Field | Meaning |
 |-------|---------|
-| `kind` | `usage`, `invalid_input`, `transport`, `timeout`, `device_error`, `protocol`, `output` or `internal` |
+| `kind` | `usage`, `invalid_input`, `transport`, `timeout`, `device_error`, `protocol`, `unsupported`, `output`, `internal` or `interrupted` |
 | `code` | stable code; see [exitcodes.md](exitcodes.md) |
 | `message` | text for people; do not parse it. In a row it is short: the name of the BACnet error |
 | `bacnet` | what the device answered, for `device_error`: `pdu` (`"error"`, `"reject"` or `"abort"`); for an error `class`, `class_id`, `code`, `code_id` (`"property"`, `2`, `"unknown-property"`, `32`); for a reject or an abort `reason`, `reason_id` |
