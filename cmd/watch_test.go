@@ -145,7 +145,7 @@ func covValue(rec map[string]any) any {
 	return rec["values"].([]any)[0].(map[string]any)["value"].(map[string]any)["value"]
 }
 
-// endedAfterDuration fails the test unless the summary of a monitor run with --duration 1
+// endedAfterDuration fails the test unless the summary of a run with --duration 1
 // reports what and a run of at least that second. How much longer it took depends on the
 // machine; it stays well below the 30 s the other runs use as "does not end by itself".
 func endedAfterDuration(t testing.TB, r result, what string) {
@@ -272,7 +272,7 @@ func TestEvents(t *testing.T) {
 	}
 	listen("--count", "1", "--format", "table").want(t, 0).has(t, "TIME", "TRANSITION", "analog-input:2", "normal -> high-limit", "Return air humidity high")
 	// Nothing arrives: --duration ends listening.
-	run(t, "events", "--local-port", "0", "--duration", "1").want(t, 0).silent(t).errHas(t, "0 event notifications in 1.0 s")
+	endedAfterDuration(t, run(t, "events", "--local-port", "0", "--duration", "1").want(t, 0).silent(t), "0 event notifications")
 	run(t, "events", "--bbmd", "x y").want(t, 3)
 	run(t, "events", "--format", "xml").want(t, 3)
 }
