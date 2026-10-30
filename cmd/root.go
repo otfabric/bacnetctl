@@ -154,11 +154,11 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 
 // usageInvocation says in which format to report an error that came before any command
 // ran (an unknown flag, a missing argument, a malformed environment variable): as JSON
-// when the invocation asks for JSON, with --format or BACNETCTL_OUTPUT_FORMAT, so that a
+// when the invocation asks for JSON, with --format or BACNETCTL_FORMAT, so that a
 // script that reads JSON from stdout gets its error object in every case.
 func usageInvocation(args []string) *runner.Invocation {
 	inv := &runner.Invocation{}
-	asked := os.Getenv("BACNETCTL_OUTPUT_FORMAT")
+	asked := config.Getenv("BACNETCTL_FORMAT")
 	for i, arg := range args {
 		if arg == "--" {
 			break

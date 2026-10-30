@@ -70,7 +70,7 @@ func WrapError(err error) error {
 		e.Remote = &errs.Remote{PDU: "abort", Reason: name, ReasonID: &id}
 		return e
 	case errors.Is(err, context.Canceled):
-		return errs.New(errs.KindInternal, errs.CodeContextCanceled, "interrupted", err)
+		return errs.New(errs.KindInterrupted, errs.CodeContextCanceled, "interrupted", err)
 	case errors.Is(err, bacnet.ErrTimeout), errors.Is(err, context.DeadlineExceeded):
 		return errs.New(errs.KindTimeout, errs.CodeRequestTimeout, "timeout: no answer from the device", err)
 	case errors.Is(err, bacnet.ErrClosed):
@@ -92,7 +92,7 @@ func WrapError(err error) error {
 	case errors.Is(err, bacnet.ErrProtocolViolation):
 		return errs.New(errs.KindProtocol, errs.CodeProtocolViolation, fmt.Sprintf("protocol error: %v", err), err)
 	case errors.Is(err, bacnet.ErrUnsupported), errors.Is(err, bacnet.ErrAPDUTooLarge):
-		return errs.New(errs.KindProtocol, errs.CodeUnsupported, fmt.Sprintf("protocol error: %v", err), err)
+		return errs.New(errs.KindUnsupported, errs.CodeUnsupported, fmt.Sprintf("protocol error: %v", err), err)
 	}
 	var netErr net.Error
 	var opErr *net.OpError

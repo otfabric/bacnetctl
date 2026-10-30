@@ -131,7 +131,7 @@ func (s *Session) readSingly(ctx context.Context, target client.Target, spec ser
 // cannot say which of its properties are required and which optional.
 func (s *Session) expand(ctx context.Context, target client.Target, object bacnet.ObjectIdentifier, special bacnet.PropertyIdentifier) ([]bacnet.PropertyReference, error) {
 	if special != PropertyAll {
-		return nil, errs.New(errs.KindProtocol, errs.CodeUnsupported, fmt.Sprintf(
+		return nil, errs.New(errs.KindUnsupported, errs.CodeUnsupported, fmt.Sprintf(
 			"%q needs ReadPropertyMultiple, which the device does not answer for this object; read \"all\" instead", PropertyName(special)), nil)
 	}
 	list, err := s.ReadPropertyList(ctx, target, object, 0)

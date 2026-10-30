@@ -13,7 +13,10 @@ const (
 	KindProtocol     Kind = "protocol"
 	// KindDevice is a request the device answered and refused: a BACnet Error, Reject or
 	// Abort.
-	KindDevice   Kind = "device_error"
-	KindOutput   Kind = "output"
-	KindInternal Kind = "internal"
+	KindDevice      Kind = "device_error"
+	KindOutput      Kind = "output"
+	KindInternal    Kind = "internal"
+	KindInterrupted Kind = "interrupted"
+	// KindUnsupported is an operation the peer does not support.
+	KindUnsupported Kind = "unsupported"
 )
