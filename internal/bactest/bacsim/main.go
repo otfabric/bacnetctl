@@ -14,6 +14,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,11 +22,26 @@ import (
 	"github.com/otfabric/bacnetctl/internal/bactest"
 )
 
+// exit ends the process; a test replaces it.
+var exit = os.Exit
+
 func main() {
-	listen := flag.String("listen", "127.0.0.1:47809", "UDP address to listen on")
-	router := flag.Bool("router", true, "also be a BACnet router to network 2001 (device at MAC 0A) and a BBMD")
-	password := flag.String("password", "", "password the device asks for in device management requests")
-	flag.Parse()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	code := run(ctx, os.Args[1:], os.Stderr)
+	stop()
+	exit(code)
+}
+
+// run serves the simulated device until ctx ends and returns the exit code.
+func run(ctx context.Context, args []string, stderr io.Writer) int {
+	fs := flag.NewFlagSet("bacsim", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	listen := fs.String("listen", "127.0.0.1:47809", "UDP address to listen on")
+	router := fs.Bool("router", true, "also be a BACnet router to network 2001 (device at MAC 0A) and a BBMD")
+	password := fs.String("password", "", "password the device asks for in device management requests")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
 
 	opts := []bactest.Option{bactest.Password(*password)}
 	if *router {
@@ -33,11 +49,10 @@ func main() {
 	}
 	dev, err := bactest.Listen(*listen, opts...)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "bacsim:", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintln(stderr, "bacsim:", err)
+		return 1
 	}
-	fmt.Fprintf(os.Stderr, "bacsim: device %d listening on %s (Ctrl-C to stop)\n", bactest.DefaultInstance, dev.Target())
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	_, _ = fmt.Fprintf(stderr, "bacsim: device %d listening on %s (Ctrl-C to stop)\n", bactest.DefaultInstance, dev.Target())
 	dev.Run(ctx)
+	return 0
 }
