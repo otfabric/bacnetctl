@@ -1,5 +1,17 @@
 # bacnetctl Releases
 
+## v0.2.2
+
+**Date:** 2026-10-31
+**Previous release:** v0.2.1
+
+### Changed
+
+- Policy 1.2: build output in `bin/` and `release/`, a per-package coverage floor, and more tests and CI. No change in behaviour.
+- Built on go-bacnet v0.4.1.
+
+---
+
 ## v0.2.1
 
 **Date:** 2026-10-30  
