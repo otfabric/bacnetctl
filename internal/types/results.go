@@ -624,7 +624,7 @@ func (r *DeviceResult) MarshalTextOutput() (string, error) {
 		items []string
 	}{{"Services supported", r.ServicesSupported}, {"Object types supported", r.ObjectTypesSupported}} {
 		if len(l.items) > 0 {
-			out.WriteString(fmt.Sprintf("\n\n%s (%d):\n  %s", l.title, len(l.items), strings.ReplaceAll(wrapList(l.items, 86), "\n", "\n  ")))
+			fmt.Fprintf(&out, "\n\n%s (%d):\n  %s", l.title, len(l.items), strings.ReplaceAll(wrapList(l.items, 86), "\n", "\n  "))
 		}
 	}
 	return out.String(), nil

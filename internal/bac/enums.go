@@ -3,6 +3,7 @@
 package bac
 
 import (
+	"math"
 	"strconv"
 	"strings"
 
@@ -170,6 +171,9 @@ func EnumName(objType bacnet.ObjectType, prop bacnet.PropertyIdentifier, v uint3
 	case bacnet.PropertyUnits, 82, 20, 27, 50, 94:
 		return UnitName(v)
 	case bacnet.PropertyObjectType:
+		if v > math.MaxUint16 {
+			return ""
+		}
 		return ObjectTypeName(bacnet.ObjectType(v))
 	case bacnet.PropertyPropertyList:
 		return PropertyName(bacnet.PropertyIdentifier(v))

@@ -124,6 +124,9 @@ func str(s string) bacnet.ApplicationValue {
 func latin1(s string) bacnet.ApplicationValue {
 	raw := make([]byte, 0, len(s))
 	for _, r := range s {
+		if r < 0 || r > 0xFF {
+			r = '?' // not in ISO 8859-1
+		}
 		raw = append(raw, byte(r))
 	}
 	return bacnet.ApplicationValue{Kind: bacnet.ValueCharacterString, Character: bacnet.CharacterString{Encoding: 5, Value: string(raw)}}
@@ -136,7 +139,7 @@ func bits(set ...bool) bacnet.ApplicationValue {
 			b.Bytes[i/8] |= 0x80 >> (i % 8)
 		}
 	}
-	b.UnusedBits = uint8(len(b.Bytes)*8 - len(set))
+	b.UnusedBits = uint8((len(b.Bytes)*8 - len(set)) & 7)
 	return bacnet.ApplicationValue{Kind: bacnet.ValueBitString, BitString: b}
 }
 
@@ -228,7 +231,10 @@ const noUnits = math.MaxUint32
 
 func dateTime(day, hour, minute uint8) service.DateTime {
 	// 2026-10-10 is a Saturday: day of week 6.
-	return service.DateTime{Date: bacnet.Date{Year: 126, Month: 10, Day: day, Weekday: uint8((int(day)-10+6-1)%7 + 1)},
+	// The remainder is taken modulo 7 twice: Go keeps the sign, and days before the 10th
+	// give a negative offset.
+	weekday := uint8((((int(day)-10+6-1)%7+7)%7 + 1) & 7)
+	return service.DateTime{Date: bacnet.Date{Year: 126, Month: 10, Day: day, Weekday: weekday},
 		Time: bacnet.Time{Hour: hour, Minute: minute}}
 }
 

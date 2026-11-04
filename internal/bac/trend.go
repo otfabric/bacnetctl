@@ -56,15 +56,19 @@ func Trend(ctx context.Context, cfg *config.TrendConfig, objectArg string, logw 
 	if err != nil {
 		return nil, err
 	}
+	count, err := i32(cfg.Count, "--count")
+	if err != nil {
+		return nil, errs.InvalidInput(errs.CodeInvalidInput, err.Error(), err)
+	}
 	res := &types.TrendResult{Target: TargetText(target), ObjectRef: objRef(object), Start: cfg.Start, Records: []types.LogRecord{}}
 	req := service.ReadRangeRequest{
 		Object: object, Property: bacnet.PropertyReference{Identifier: bacnet.PropertyLogBuffer},
-		By: service.ReadRangeByPosition, ReferenceIndex: cfg.Start, Count: int32(cfg.Count),
+		By: service.ReadRangeByPosition, ReferenceIndex: cfg.Start, Count: count,
 	}
 	var records []service.LogRecord
 	items := 0
 	if cfg.All {
-		page, err := s.ReadRangeAll(ctx, target, req, client.ReadRangePageOptions{PageCount: int32(cfg.Count), MaxItems: maxTrendRecords, MaxPages: maxTrendRecords})
+		page, err := s.ReadRangeAll(ctx, target, req, client.ReadRangePageOptions{PageCount: count, MaxItems: maxTrendRecords, MaxPages: maxTrendRecords})
 		if err != nil {
 			return nil, WrapError(err)
 		}

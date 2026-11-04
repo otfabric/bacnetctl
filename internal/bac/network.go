@@ -33,6 +33,12 @@ func ParseSyncTime(s string) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, fmt.Errorf("--time %q: use now, or RFC 3339 such as 2026-01-31T12:00:00+01:00", s)
 	}
+	// The UTC form can move the year at either end of the range: check both.
+	for _, v := range []time.Time{t, t.UTC()} {
+		if err := CheckDateYear(v); err != nil {
+			return time.Time{}, fmt.Errorf("--time %q: %w", s, err)
+		}
+	}
 	return t, nil
 }
 

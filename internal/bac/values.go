@@ -3,6 +3,7 @@
 package bac
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -45,9 +46,11 @@ func Text(s bacnet.CharacterString) string {
 	case charsetUCS4:
 		var b strings.Builder
 		for i := 0; i+3 < len(raw); i += 4 {
-			r := rune(uint32(raw[i])<<24 | uint32(raw[i+1])<<16 | uint32(raw[i+2])<<8 | uint32(raw[i+3]))
-			if !utf8.ValidRune(r) {
-				r = utf8.RuneError
+			r := utf8.RuneError
+			if u := binary.BigEndian.Uint32(raw[i:]); u <= utf8.MaxRune {
+				if c := rune(u); utf8.ValidRune(c) {
+					r = c
+				}
 			}
 			b.WriteRune(r)
 		}

@@ -1,5 +1,36 @@
 # bacnetctl Releases
 
+## v0.3.0
+
+**Date:** 2026-11-04
+**Previous release:** v0.2.2
+
+Requires **Go 1.26+**. Built on go-bacnet v0.5.0.
+
+### Summary
+
+SAST review (gosec and opengrep at low severity and confidence: 34 findings, none left open) and hardening. Two changes in behaviour: `file get` creates its output file with mode 0600, and a time stamp whose year a BACnet date cannot hold is refused.
+
+### Changed
+
+- **`file get`:** a new `--output` file is created with mode 0600 (was 0644): a file object can hold a device configuration or credentials. An existing file keeps its mode.
+- **`time sync --time`** and **`ack --event-time`:** a year outside 1900-2154 is refused with exit code 3 (`invalid_input`); nothing is sent. Before, it wrapped and the device was sent another date (a year of 2300 went out as 2044). For `time sync` the UTC form is checked too.
+- **`file put`:** `--start` plus the input length past octet 2^31-1, the last a file object can address, is refused with exit code 3 before anything is sent (was exit 6 from go-bacnet).
+- **`device`:** a number the device sends wider than 32 bits (vendor identifier, max APDU, database revision and the other numeric fields) is left out of the result instead of shown as its low 32 bits.
+- **`decode`:** a ReadPropertyMultiple request with a property identifier or array index wider than 32 bits is malformed.
+- A UCS-4 character string with a code point above U+10FFFF shows U+FFFD instead of a wrapped value.
+- Built on go-bacnet v0.5.0, which refuses out-of-range values from devices in the same way (see its release notes).
+- Go 1.26 floor, CI on Go 1.26 and 1.27, shared workflows v3.3.1.
+
+### Tests
+
+- A hostile device in the command tests: numbers wider than 32 bits, invalid UCS-4 code points, an object type above 65535, silence, junk datagrams, and malformed or truncated answers.
+- The e2e suite (`make e2e`) also builds the simulator `bacsim` and runs the binary against it: discover, read, device, file get, time sync and JSON output.
+- Fuzz targets for the request decoder, whole-frame decoding and character-set text.
+- Boundary tests for the range checks, the date-year limit and the test device's weekday (wrong before the 10th of the month).
+
+---
+
 ## v0.2.2
 
 **Date:** 2026-10-31

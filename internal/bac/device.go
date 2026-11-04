@@ -62,7 +62,12 @@ func DeviceInfo(ctx context.Context, cfg *config.DeviceConfig, logw io.Writer) (
 func uintOf(v bacnet.ApplicationValue) *uint32 {
 	switch v.Kind {
 	case bacnet.ValueUnsigned:
-		n := uint32(v.Unsigned)
+		// A value wider than the field is malformed: leave the field out rather than
+		// show its low bits.
+		n, err := u32(v.Unsigned, "device property")
+		if err != nil {
+			return nil
+		}
 		return &n
 	case bacnet.ValueEnumerated:
 		n := v.Enumerated
