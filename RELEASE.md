@@ -9,7 +9,7 @@ Requires **Go 1.26+**. Built on go-bacnet v0.5.0.
 
 ### Summary
 
-SAST review (gosec and opengrep at low severity and confidence: 34 findings, none left open) and hardening. Two changes in behaviour: `file get` creates its output file with mode 0600, and a time stamp whose year a BACnet date cannot hold is refused.
+SAST review (gosec and opengrep at low severity and confidence: 34 findings, 33 fixed and 1 false positive recorded) and hardening. Changes in behaviour: `file get` creates its output file with mode 0600; `time sync` and `ack` refuse a year a BACnet date cannot hold, and `file put` a write past the last addressable octet (exit 3, nothing sent); `device` leaves out a number wider than 32 bits; `decode` reports a property reference wider than 32 bits as malformed. Details under Changed.
 
 ### Changed
 
