@@ -3,6 +3,9 @@
 package bactest
 
 import (
+	"crypto/subtle"
+	"fmt"
+	"math"
 	"net/netip"
 
 	bacnet "github.com/otfabric/go-bacnet"
@@ -301,7 +304,7 @@ func (m *model) passwordOK(given *bacnet.CharacterString) bool {
 	if m.password == "" {
 		return true
 	}
-	return given != nil && given.Value == m.password
+	return given != nil && subtle.ConstantTimeCompare([]byte(given.Value), []byte(m.password)) == 1
 }
 
 // subscribe adds, renews or cancels a COV subscription. A new subscription is followed by
@@ -398,7 +401,11 @@ func (m *model) readRange(req service.ReadRangeRequest) ([]byte, *bacErr, bool) 
 	} else {
 		ack.ResultFlags = service.EncodeResultFlags(false, false, false)
 	}
-	ack.ItemCount = uint32(len(records))
+	n := len(records)
+	if int64(n) > math.MaxUint32 {
+		return nil, nil, true
+	}
+	ack.ItemCount = uint32(n)
 	ack.LogRecords = records
 	reply, err := service.EncodeReadRangeACK(ack)
 	return reply, nil, err != nil
@@ -425,6 +432,9 @@ func decodeRPM(payload []byte, limits bacnet.DecodeLimits) ([]service.ReadAccess
 				u, err := bacnet.ContextUnsigned(p)
 				if err != nil {
 					return nil, err
+				}
+				if u > math.MaxUint32 {
+					return nil, fmt.Errorf("%w: property reference %d exceeds 32 bits", bacnet.ErrMalformed, u)
 				}
 				if p.TagNumber == 0 {
 					cur.Properties = append(cur.Properties, bacnet.PropertyReference{Identifier: bacnet.PropertyIdentifier(u)})

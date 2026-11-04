@@ -19,7 +19,7 @@ Thank you for your interest in contributing to `bacnetctl`! This document covers
 
 ### Prerequisites
 
-- Go 1.25+ (see [go.mod](go.mod))
+- Go 1.26+ (see [go.mod](go.mod))
 - [staticcheck](https://staticcheck.dev/) and [golangci-lint](https://golangci-lint.run/) for linting
 - No hardware: the test suite brings its own simulated device (see [Testing](#testing))
 - The working tree of [go-bacnet](https://github.com/otfabric/go-bacnet) next to this repository, while `go.mod` carries a `replace` to `../go-bacnet`

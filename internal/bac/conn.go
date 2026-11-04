@@ -4,6 +4,7 @@ package bac
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -227,7 +228,7 @@ func (s *Session) Target(ctx context.Context, cfg *config.ConnConfig) (client.Ta
 func EndpointTarget(ep bip.Endpoint) client.Target {
 	ip := ep.Addr.Addr().As4()
 	port := ep.Addr.Port()
-	mac := bacnet.MustMAC([]byte{ip[0], ip[1], ip[2], ip[3], byte(port >> 8), byte(port)})
+	mac := bacnet.MustMAC(binary.BigEndian.AppendUint16(ip[:], port))
 	return client.Target{Address: bacnet.LocalStation(mac), Endpoint: ep}
 }
 

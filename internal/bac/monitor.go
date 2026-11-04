@@ -225,7 +225,7 @@ func Monitor(ctx context.Context, cfg *config.MonitorConfig, args []string, logw
 				return summary, errs.Output(errs.CodeOutputWriteFailed, err)
 			}
 			summary.Received++
-			if cfg.Count > 0 && uint32(summary.Received) >= cfg.Count {
+			if reached(summary.Received, cfg.Count) {
 				return summary, nil
 			}
 		}
@@ -275,7 +275,7 @@ func (s *Session) poll(ctx context.Context, cfg *config.MonitorConfig, req Monit
 					return errs.Output(errs.CodeOutputWriteFailed, err)
 				}
 				summary.Received++
-				if cfg.Count > 0 && uint32(summary.Received) >= cfg.Count {
+				if reached(summary.Received, cfg.Count) {
 					return nil
 				}
 			}

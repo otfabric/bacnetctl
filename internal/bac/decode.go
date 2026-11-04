@@ -656,11 +656,15 @@ func DecodeReadPropertyMultiple(payload []byte, limits bacnet.DecodeLimits) ([]s
 				if err != nil {
 					return nil, err
 				}
+				v, err := u32(u, "property reference")
+				if err != nil {
+					return nil, err
+				}
 				switch {
 				case p.TagNumber == 0:
-					cur.Properties = append(cur.Properties, bacnet.PropertyReference{Identifier: bacnet.PropertyIdentifier(u)})
+					cur.Properties = append(cur.Properties, bacnet.PropertyReference{Identifier: bacnet.PropertyIdentifier(v)})
 				case p.TagNumber == 1 && len(cur.Properties) > 0:
-					idx := uint32(u)
+					idx := v
 					cur.Properties[len(cur.Properties)-1].ArrayIndex = &idx
 				default:
 					return nil, fmt.Errorf("%w: unexpected property reference tag %d", bacnet.ErrMalformed, p.TagNumber)

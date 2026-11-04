@@ -98,7 +98,7 @@ func Alarms(ctx context.Context, cfg *config.AlarmsConfig, logw io.Writer) (*typ
 	}
 	res := &types.AlarmsResult{Target: TargetText(target), Service: ServiceGetEventInformation, Alarms: []types.Alarm{}}
 	var req service.GetEventInformationRequest
-	for page := 0; page < maxEventPages; page++ {
+	for page := range maxEventPages {
 		ack, err := s.GetEventInformation(ctx, target, req)
 		if err != nil {
 			if page == 0 && NotImplemented(err) {
@@ -210,6 +210,9 @@ func ParseAck(cfg *config.AckConfig, object string) (AckRequest, error) {
 		if err != nil {
 			return req, fmt.Errorf("--event-time %q: use RFC 3339, for example 2026-01-31T12:00:00.25+01:00", cfg.Time)
 		}
+		if err := CheckDateYear(t); err != nil {
+			return req, fmt.Errorf("--event-time %q: %w", cfg.Time, err)
+		}
 		d, tm := DateTimeOf(t)
 		req.Stamp = &service.TimeStamp{Choice: service.TimeStampDateTime, DateTime: service.DateTime{Date: d, Time: tm}}
 	}
@@ -318,7 +321,7 @@ func Events(ctx context.Context, cfg *config.EventsConfig, logw io.Writer, emit 
 				return summary, errs.Output(errs.CodeOutputWriteFailed, err)
 			}
 			summary.Received++
-			if cfg.Count > 0 && uint32(summary.Received) >= cfg.Count {
+			if reached(summary.Received, cfg.Count) {
 				return summary, nil
 			}
 		}

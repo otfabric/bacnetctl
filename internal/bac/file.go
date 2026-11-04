@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"time"
 
@@ -113,7 +114,9 @@ func FileGet(ctx context.Context, cfg *config.FileGetConfig, objectArg string, s
 		}
 		return res, nil
 	}
-	if err := os.WriteFile(cfg.Output, data, 0o644); err != nil { //nolint:gosec // a path the operator gave
+	// 0600: a file object can hold a device configuration or credentials. An existing
+	// file keeps its mode.
+	if err := os.WriteFile(cfg.Output, data, 0o600); err != nil {
 		return nil, errs.New(errs.KindOutput, errs.CodeOutputFileWriteFailed, fmt.Sprintf("cannot write %s: %v", cfg.Output, err), err)
 	}
 	return res, nil
@@ -127,6 +130,12 @@ func FilePut(ctx context.Context, cfg *config.FilePutConfig, objectArg string, l
 	if err != nil {
 		return nil, errs.InvalidInput(errs.CodeInputFileOpenFailed, fmt.Sprintf("cannot read %s: %v", cfg.Input, err), err)
 	}
+	// File positions are Signed32: the last octet written must be at 2^31-1 or below.
+	// Refuse before anything is sent.
+	if end := int64(cfg.Start) + int64(len(data)); end > math.MaxInt32 {
+		msg := fmt.Sprintf("--start %d with %d octets ends past octet %d, the last a file object can address", cfg.Start, len(data), math.MaxInt32)
+		return nil, errs.InvalidInput(errs.CodeInvalidInput, msg, nil)
+	}
 	s, err := Open(ctx, &cfg.SocketConfig, logw)
 	if err != nil {
 		return nil, err
@@ -136,8 +145,12 @@ func FilePut(ctx context.Context, cfg *config.FilePutConfig, objectArg string, l
 	if err != nil {
 		return nil, err
 	}
+	pos, err := i32(cfg.Start, "--start")
+	if err != nil {
+		return nil, errs.InvalidInput(errs.CodeInvalidInput, err.Error(), err)
+	}
 	start := time.Now()
-	outcomes, err := s.WriteFileStream(ctx, target, object, int32(cfg.Start), data, client.FileWriteOptions{ChunkSize: cfg.Chunk})
+	outcomes, err := s.WriteFileStream(ctx, target, object, pos, data, client.FileWriteOptions{ChunkSize: cfg.Chunk})
 	if err != nil {
 		done := 0
 		for _, o := range outcomes {

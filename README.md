@@ -1,6 +1,6 @@
 # bacnetctl — BACnet/IP CLI for Device Discovery, Monitoring and Diagnostics
 
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI Status](https://github.com/otfabric/bacnetctl/actions/workflows/ci.yml/badge.svg)](https://github.com/otfabric/bacnetctl/actions/workflows/ci.yml)
 [![Code Coverage](https://codecov.io/gh/otfabric/bacnetctl/graph/badge.svg)](https://codecov.io/gh/otfabric/bacnetctl)
@@ -344,7 +344,7 @@ bacnetctl needs no administrator rights: it opens an ordinary UDP socket. Comman
 
 ### Build from source
 
-Requires Go 1.25 or later:
+Requires Go 1.26 or later:
 
 ```console
 git clone https://github.com/otfabric/bacnetctl.git
@@ -842,7 +842,7 @@ bacnetctl file get --device 192.168.1.20 file:2 --output - | less
 bacnetctl file put --device 192.168.1.20 file:1 --input config.bin
 ```
 
-The result names the length and the SHA-256 of the content. `--chunk` is the number of octets per request (256 by default): lower it for a device with a small APDU, raise it for speed.
+The result names the length and the SHA-256 of the content. A new `--output` file is created readable by its owner only (mode 0600), because a file object can hold a device configuration; an existing file keeps its mode. `--chunk` is the number of octets per request (256 by default): lower it for a device with a small APDU, raise it for speed.
 
 #### Time synchronization
 
@@ -936,7 +936,7 @@ bacnetctl read analog-input:1 present-value
 | **BACNETCTL_DEVICE** | string | Device address `host[:port]`; the router with `--network` and `--mac`; the BBMD for **`bbmd`** | `--device` | |
 | **BACNETCTL_DISCOVER_NETWORK** | string | **`discover`**, **`whohas`**: ask only this BACnet network, or `all` | `--network` | |
 | **BACNETCTL_DURATION** | uint32 | **`monitor`**, **`events`**: stop after this many seconds (0 = until interrupted) | `--duration` | 0 |
-| **BACNETCTL_EVENT_TIME** | string | **`ack`**: date and time stamp of the event, RFC 3339 | `--event-time` | read from the object |
+| **BACNETCTL_EVENT_TIME** | string | **`ack`**: date and time stamp of the event, RFC 3339, year 1900-2154 | `--event-time` | read from the object |
 | **BACNETCTL_FILE_START** | uint32 | **`file put`**: position in the file object to write at | `--start` | 0 |
 | **BACNETCTL_FILTER** | string | **`types`**, **`properties`**: only names that contain this text | `--filter` | |
 | **BACNETCTL_HIGH** | string | **`discover`**, **`whohas`**: highest device instance to ask | `--high` | |
@@ -968,7 +968,7 @@ bacnetctl read analog-input:1 present-value
 | **BACNETCTL_START** | uint32 | **`trend`**: position of the first record | `--start` | 1 |
 | **BACNETCTL_STATE** | string | **`ack`**: event state that is acknowledged | `--state` | the state the object is in |
 | **BACNETCTL_TARGET** | string | **`discover`**, **`whohas`**, **`router list`**: ask this address instead of broadcasting | `--target` | |
-| **BACNETCTL_TIME** | string | **`time sync`**: now, or an RFC 3339 time | `--time` | now |
+| **BACNETCTL_TIME** | string | **`time sync`**: now, or an RFC 3339 time, year 1900-2154 (also in UTC) | `--time` | now |
 | **BACNETCTL_TIMEOUT** | uint32 | APDU timeout in ms (0 = 3000) | `--timeout` | 3000 |
 | **BACNETCTL_TYPE** | string | **`write`**: type of a value without prefix | `--type` | auto |
 | **BACNETCTL_TYPES** | string | **`objects`**: only list these object types | `--type` | |

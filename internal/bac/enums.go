@@ -3,6 +3,7 @@
 package bac
 
 import (
+	"math"
 	"strconv"
 	"strings"
 
@@ -170,6 +171,9 @@ func EnumName(objType bacnet.ObjectType, prop bacnet.PropertyIdentifier, v uint3
 	case bacnet.PropertyUnits, 82, 20, 27, 50, 94:
 		return UnitName(v)
 	case bacnet.PropertyObjectType:
+		if v > math.MaxUint16 {
+			return ""
+		}
 		return ObjectTypeName(bacnet.ObjectType(v))
 	case bacnet.PropertyPropertyList:
 		return PropertyName(bacnet.PropertyIdentifier(v))
@@ -228,10 +232,7 @@ func bitNames(prop bacnet.PropertyIdentifier) []string {
 
 // BitList returns the bits of a bit string as booleans, most significant first.
 func BitList(b bacnet.BitString) []bool {
-	n := len(b.Bytes)*8 - int(b.UnusedBits)
-	if n < 0 {
-		n = 0
-	}
+	n := max(len(b.Bytes)*8-int(b.UnusedBits), 0)
 	out := make([]bool, n)
 	for i := range out {
 		out[i] = b.Bytes[i/8]&(0x80>>(i%8)) != 0

@@ -53,7 +53,7 @@ func Objects(ctx context.Context, cfg *config.ObjectsConfig, logw io.Writer) (*t
 		if len(wanted) > 0 && !wanted[id.Type] {
 			continue
 		}
-		if cfg.Limit > 0 && uint32(len(specs)) >= cfg.Limit {
+		if reached(len(specs), cfg.Limit) {
 			break
 		}
 		props := []bacnet.PropertyReference{{Identifier: bacnet.PropertyObjectName}}

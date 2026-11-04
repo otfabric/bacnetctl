@@ -253,7 +253,7 @@ func ParseBits(s string) (bacnet.BitString, error) {
 			return bacnet.BitString{}, fmt.Errorf("invalid bit %q", c)
 		}
 	}
-	out.UnusedBits = uint8(len(out.Bytes)*8 - len(s))
+	out.UnusedBits = uint8((len(out.Bytes)*8 - len(s)) & 7)
 	return out, nil
 }
 
@@ -298,7 +298,7 @@ func ParseDate(s string) (bacnet.Date, error) {
 // Weekday returns the BACnet day of week of t: 1 is Monday, 7 is Sunday.
 func Weekday(t time.Time) uint8 {
 	if wd := t.Weekday(); wd != time.Sunday {
-		return uint8(wd)
+		return octet(int(wd))
 	}
 	return 7
 }
@@ -309,7 +309,7 @@ func ParseTime(s string) (bacnet.Time, error) {
 	hundredths := 0
 	if main, frac, ok := strings.Cut(s, "."); ok {
 		h, err := strconv.Atoi(frac)
-		if err != nil || len(frac) != 2 || h < 0 {
+		if err != nil || len(frac) != 2 || h < 0 || h > 99 {
 			return bacnet.Time{}, fmt.Errorf("invalid hundredths in %q", s)
 		}
 		hundredths, s = h, main
@@ -329,11 +329,26 @@ func ParseTime(s string) (bacnet.Time, error) {
 	if n[0] > 23 || n[1] > 59 || n[2] > 59 {
 		return bacnet.Time{}, fmt.Errorf("invalid time %q", s)
 	}
-	return bacnet.Time{Hour: uint8(n[0]), Minute: uint8(n[1]), Second: uint8(n[2]), Hundredths: uint8(hundredths)}, nil
+	return bacnet.Time{Hour: octet(n[0]), Minute: octet(n[1]), Second: octet(n[2]), Hundredths: octet(hundredths)}, nil
 }
 
-// DateTimeOf returns the BACnet date and time of t.
+// BACnet dates hold the year as an offset from 1900 in one octet; 255 means unspecified.
+const (
+	minDateYear = 1900
+	maxDateYear = 2154
+)
+
+// CheckDateYear refuses a time whose year a BACnet date cannot hold.
+func CheckDateYear(t time.Time) error {
+	if y := t.Year(); y < minDateYear || y > maxDateYear {
+		return fmt.Errorf("year %d: a BACnet date holds %d-%d", y, minDateYear, maxDateYear)
+	}
+	return nil
+}
+
+// DateTimeOf returns the BACnet date and time of t. Callers check the year with
+// CheckDateYear; a year out of range is sent as unspecified, never wrapped.
 func DateTimeOf(t time.Time) (bacnet.Date, bacnet.Time) {
-	return bacnet.Date{Year: uint8(t.Year() - 1900), Month: uint8(t.Month()), Day: uint8(t.Day()), Weekday: Weekday(t)},
-		bacnet.Time{Hour: uint8(t.Hour()), Minute: uint8(t.Minute()), Second: uint8(t.Second()), Hundredths: uint8(t.Nanosecond() / 10_000_000)}
+	return bacnet.Date{Year: octet(t.Year() - minDateYear), Month: octet(int(t.Month())), Day: octet(t.Day()), Weekday: Weekday(t)},
+		bacnet.Time{Hour: octet(t.Hour()), Minute: octet(t.Minute()), Second: octet(t.Second()), Hundredths: octet(t.Nanosecond() / 10_000_000)}
 }

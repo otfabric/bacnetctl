@@ -114,6 +114,12 @@ func NoWildcard() Option { return func(d *Device) { d.local.noWildcard = true } 
 // Password makes the device ask for this password in device management requests.
 func Password(p string) Option { return func(d *Device) { d.local.password = p } }
 
+// DeviceProperty makes the Device object answer v for a property: a value a hostile or
+// broken device sends, such as an Unsigned wider than the property can hold.
+func DeviceProperty(id bacnet.PropertyIdentifier, v bacnet.ApplicationValue) Option {
+	return func(d *Device) { d.local.find(d.local.deviceID()).set(id, v) }
+}
+
 // Router makes the device a BACnet router to network 2001, with a second device behind it
 // at MAC 0A, and a BBMD that accepts foreign devices.
 func Router() Option {
@@ -174,7 +180,7 @@ func Listen(addr string, opts ...Option) (*Device, error) {
 	local := conn.LocalAddr().(*net.UDPAddr)
 	ip, _ := netip.AddrFromSlice(local.IP.To4())
 	d := &Device{
-		conn: conn, Addr: netip.AddrPortFrom(ip, uint16(local.Port)), changed: make(chan struct{}),
+		conn: conn, Addr: netip.AddrPortFrom(ip, local.AddrPort().Port()), changed: make(chan struct{}),
 		local: newModel(DefaultInstance, "AHU-1 Controller"), mute: map[string]bool{}, without: map[string]bool{},
 		done: make(chan struct{}),
 	}

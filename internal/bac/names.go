@@ -272,7 +272,7 @@ func ParseObjects(args []string) ([]bacnet.ObjectIdentifier, error) {
 // ParseObjectTypes parses a comma-separated list of object types; empty gives nil.
 func ParseObjectTypes(s string) ([]bacnet.ObjectType, error) {
 	var out []bacnet.ObjectType
-	for _, part := range strings.Split(s, ",") {
+	for part := range strings.SplitSeq(s, ",") {
 		if strings.TrimSpace(part) == "" {
 			continue
 		}
@@ -311,7 +311,7 @@ func ParseProperty(s string) (bacnet.PropertyIdentifier, error) {
 // an array index in brackets, as in priority-array[8].
 func ParseProperties(s string) ([]bacnet.PropertyReference, error) {
 	var out []bacnet.PropertyReference
-	for _, part := range strings.Split(s, ",") {
+	for part := range strings.SplitSeq(s, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
