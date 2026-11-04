@@ -1,6 +1,6 @@
 # bacnetctl — BACnet/IP CLI for Device Discovery, Monitoring and Diagnostics
 
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI Status](https://github.com/otfabric/bacnetctl/actions/workflows/ci.yml/badge.svg)](https://github.com/otfabric/bacnetctl/actions/workflows/ci.yml)
 [![Code Coverage](https://codecov.io/gh/otfabric/bacnetctl/graph/badge.svg)](https://codecov.io/gh/otfabric/bacnetctl)
@@ -344,7 +344,7 @@ bacnetctl needs no administrator rights: it opens an ordinary UDP socket. Comman
 
 ### Build from source
 
-Requires Go 1.25 or later:
+Requires Go 1.26 or later:
 
 ```console
 git clone https://github.com/otfabric/bacnetctl.git

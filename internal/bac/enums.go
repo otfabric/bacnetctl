@@ -228,10 +228,7 @@ func bitNames(prop bacnet.PropertyIdentifier) []string {
 
 // BitList returns the bits of a bit string as booleans, most significant first.
 func BitList(b bacnet.BitString) []bool {
-	n := len(b.Bytes)*8 - int(b.UnusedBits)
-	if n < 0 {
-		n = 0
-	}
+	n := max(len(b.Bytes)*8-int(b.UnusedBits), 0)
 	out := make([]bool, n)
 	for i := range out {
 		out[i] = b.Bytes[i/8]&(0x80>>(i%8)) != 0

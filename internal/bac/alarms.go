@@ -98,7 +98,7 @@ func Alarms(ctx context.Context, cfg *config.AlarmsConfig, logw io.Writer) (*typ
 	}
 	res := &types.AlarmsResult{Target: TargetText(target), Service: ServiceGetEventInformation, Alarms: []types.Alarm{}}
 	var req service.GetEventInformationRequest
-	for page := 0; page < maxEventPages; page++ {
+	for page := range maxEventPages {
 		ack, err := s.GetEventInformation(ctx, target, req)
 		if err != nil {
 			if page == 0 && NotImplemented(err) {

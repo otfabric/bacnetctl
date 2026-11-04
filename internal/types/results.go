@@ -617,16 +617,17 @@ func (r *DeviceResult) TableRows() [][]string {
 
 // MarshalTextOutput implements format.TextMarshaler.
 func (r *DeviceResult) MarshalTextOutput() (string, error) {
-	out := fields(r.pairs()...)
+	var out strings.Builder
+	out.WriteString(fields(r.pairs()...))
 	for _, l := range []struct {
 		title string
 		items []string
 	}{{"Services supported", r.ServicesSupported}, {"Object types supported", r.ObjectTypesSupported}} {
 		if len(l.items) > 0 {
-			out += fmt.Sprintf("\n\n%s (%d):\n  %s", l.title, len(l.items), strings.ReplaceAll(wrapList(l.items, 86), "\n", "\n  "))
+			out.WriteString(fmt.Sprintf("\n\n%s (%d):\n  %s", l.title, len(l.items), strings.ReplaceAll(wrapList(l.items, 86), "\n", "\n  ")))
 		}
 	}
-	return out, nil
+	return out.String(), nil
 }
 
 // ---- monitor ----

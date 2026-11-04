@@ -30,8 +30,7 @@ func WrapError(err error) error {
 		return err
 	}
 	// A write that was sent and not answered: say exactly that, whatever the cause.
-	var unknown *bacnet.OutcomeUnknownError
-	if errors.As(err, &unknown) {
+	if unknown, ok := errors.AsType[*bacnet.OutcomeUnknownError](err); ok {
 		why := "no acknowledgement arrived in time"
 		if errors.Is(err, context.Canceled) {
 			why = "it was interrupted before the acknowledgement arrived"
@@ -140,12 +139,10 @@ func PropertyErrorInfo(err error) *types.ErrorInfo {
 // NotImplemented reports whether err says that the device does not implement the service
 // that was asked for, so that another way to the same result is worth trying.
 func NotImplemented(err error) bool {
-	var reject *bacnet.RejectError
-	if errors.As(err, &reject) {
+	if reject, ok := errors.AsType[*bacnet.RejectError](err); ok {
 		return reject.Reason == bacnet.RejectReasonUnrecognizedService
 	}
-	var remote *bacnet.ErrorResponse
-	if errors.As(err, &remote) {
+	if remote, ok := errors.AsType[*bacnet.ErrorResponse](err); ok {
 		return remote.Class == bacnet.ErrorClassServices &&
 			(remote.Code == bacnet.ErrorCodeRejectUnrecognizedService || remote.Code == bacnet.ErrorCodeOptionalFunctionalityNotSupported ||
 				remote.Code == bacnet.ErrorCodeServiceRequestDenied)
