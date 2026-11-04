@@ -5,9 +5,12 @@ package bac
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/otfabric/bacnetctl/internal/config"
+	bacnet "github.com/otfabric/go-bacnet"
 )
 
 // FuzzParseObject: an object identifier that parses prints as text that
@@ -92,6 +95,92 @@ func FuzzParseWrite(f *testing.F) {
 		}
 		if _, err := ParseWrites(&config.WriteConfig{}, []string{object, property, value}); err != nil {
 			t.Fatalf("ParseWrite accepted %q %q %q, ParseWrites did not: %v", object, property, value, err)
+		}
+	})
+}
+
+// rpmSeeds are ReadPropertyMultiple request payloads: well formed, and with the property
+// references of five octets that are malformed.
+var rpmSeeds = [][]byte{
+	{0x0c, 0x00, 0x00, 0x00, 0x01, 0x1e, 0x09, 0x55, 0x1f},
+	{0x0c, 0x00, 0x00, 0x00, 0x01, 0x1e, 0x09, 0x55, 0x19, 0x08, 0x09, 0x4d, 0x1f, 0x0c, 0x02, 0x00, 0x04, 0xd2, 0x1e, 0x09, 0x08, 0x1f},
+	{0x0c, 0x00, 0x00, 0x00, 0x01, 0x1e, 0x0c, 0xff, 0xff, 0xff, 0xff, 0x1f},
+	{0x0c, 0x00, 0x00, 0x00, 0x01, 0x1e, 0x0d, 0x05, 0x01, 0x00, 0x00, 0x00, 0x55, 0x1f},
+	{0x0c, 0x00, 0x00, 0x00, 0x01, 0x1e, 0x09, 0x55, 0x1d, 0x05, 0x01, 0x00, 0x00, 0x00, 0x08, 0x1f},
+	{0x0c, 0x00, 0x00, 0x00, 0x01, 0x1e, 0x29, 0x55, 0x1f},
+	{0x1e, 0x09, 0x55, 0x1f},
+	{},
+}
+
+// FuzzDecodeReadPropertyMultiple: a request decodes or is refused, never with a property
+// reference reduced to its low bits; what decodes has an object and properties.
+func FuzzDecodeReadPropertyMultiple(f *testing.F) {
+	for _, s := range rpmSeeds {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, payload []byte) {
+		specs, err := DecodeReadPropertyMultiple(payload, bacnet.DefaultDecodeLimits())
+		if err != nil {
+			return
+		}
+		if len(specs) == 0 {
+			t.Fatalf("% x: no error and no specification", payload)
+		}
+	})
+}
+
+// FuzzDecode feeds whole frames to the decoder of `bacnetctl decode`: it reports what it
+// cannot decode and never panics; the result is valid JSON.
+func FuzzDecode(f *testing.F) {
+	for _, s := range []string{
+		"810b000c 0120 ffff 00ff 1008",
+		"810a0011 0100 1000 c4020004d2 2205c4 9103 2203e7",
+		"810a0013 0104 0005 010c 0c00000001 1955",
+		"810a0015 0104 0005 010e 0c00000001 1e 0955 1f",
+		"810a0017 0104 0005 010e 0c00000001 1e 0d0501000000 55 1f",
+		"810a0012 0100 300b06 11 0e 3100 6503 616263 0f",
+		"810b0012 0100 1006 a47e0a0a06 b40c1e0f00",
+		"810a000e 0100 3c 01 00 02 0c 0c0000",
+		"8100",
+		"",
+	} {
+		raw, err := ParseHex(s)
+		if err != nil {
+			f.Fatalf("seed %q: %v", s, err)
+		}
+		if len(raw) >= 4 {
+			raw[2], raw[3] = byte(len(raw)>>8), byte(len(raw))
+		}
+		f.Add(raw)
+	}
+	f.Fuzz(func(t *testing.T, raw []byte) {
+		res := Decode(raw)
+		if res == nil {
+			t.Fatalf("% x: no result", raw)
+		}
+		if _, err := json.Marshal(res); err != nil {
+			t.Fatalf("% x: result does not encode: %v", raw, err)
+		}
+	})
+}
+
+// FuzzText: any octets in any character set give valid UTF-8.
+func FuzzText(f *testing.F) {
+	for _, s := range [][]byte{
+		{0, 0, 0, 'A', 0x00, 0x11, 0x00, 0x00, 0, 0, 0xD8, 0},
+		{0xD8, 0x00, 0x00, 0x41},
+		{0xfc, 'a'},
+		{0xff, 0xfe, 0xfd},
+		{},
+	} {
+		for _, enc := range []uint8{0, 1, 2, 3, 4, 5, 6} {
+			f.Add(enc, s)
+		}
+	}
+	f.Fuzz(func(t *testing.T, enc uint8, raw []byte) {
+		got := Text(bacnet.CharacterString{Encoding: enc, Value: string(raw)})
+		if !utf8.ValidString(got) {
+			t.Fatalf("charset %d, % x: %q is not valid UTF-8", enc, raw, got)
 		}
 	})
 }

@@ -160,10 +160,11 @@ release-all: build-all ## Package the build binaries into tar.gz (Unix) or zip (
 vuln: ## Scan the module and its dependencies for known vulnerabilities (govulncheck)
 	@govulncheck ./...
 
-e2e: ## Build the binary and run the e2e suite against it
+e2e: ## Build the binary and the simulated device, and run the e2e suite against them
 	@mkdir -p bin
 	@go build $(LDFLAGS) -o bin/bacnetctl $(APP_SRC)
-	@BACNETCTL_E2E_BIN=$(CURDIR)/bin/bacnetctl BACNETCTL_E2E_VERSION=$(VERSION) go test -count=1 -tags=e2e ./e2e/...
+	@go build -o bin/bacsim ./internal/bactest/bacsim
+	@BACNETCTL_E2E_BIN=$(CURDIR)/bin/bacnetctl BACNETCTL_E2E_BACSIM=$(CURDIR)/bin/bacsim BACNETCTL_E2E_VERSION=$(VERSION) go test -count=1 -tags=e2e ./e2e/...
 
 install: build ## Install the built binary to /usr/local/bin
 	@echo "Installing $(APP_NAME) to /usr/local/bin"
