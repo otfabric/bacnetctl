@@ -2,12 +2,10 @@
 
 ## v0.4.0
 
-**Date:** unreleased
+**Date:** 2026-11-06
 **Previous release:** v0.3.0
 
 Requires **Go 1.26+**. Built on go-bacnet v0.6.0.
-
-> **Not releasable yet.** go-bacnet is pinned to the pseudo-version of commit c6a3b94 on its main branch (`v0.5.1-0.20261106173105-c6a3b946b2ce`), which holds the server. AGENTS.md rule 4 requires released tags: this must not be merged or released until go-bacnet v0.6.0 is tagged and `go.mod` pins it.
 
 ### Summary
 
@@ -24,7 +22,7 @@ New command group `server`: `server run` serves a simulated BACnet/IP device wit
 ### Changed
 
 - **Property 133** is named `enable`, as in ANSI/ASHRAE 135 and go-bacnet (was `log-enable`). This changes the `property` field of `read`, `describe` and `monitor` output for that property; `log-enable` is still accepted as input.
-- Built on go-bacnet v0.6.0 (pre-release pin, see above).
+- Built on go-bacnet v0.6.0.
 
 ### Tests
 

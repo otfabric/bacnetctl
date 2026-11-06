@@ -3,7 +3,7 @@ module github.com/otfabric/bacnetctl
 go 1.26
 
 require (
-	github.com/otfabric/go-bacnet v0.5.1-0.20261106173105-c6a3b946b2ce
+	github.com/otfabric/go-bacnet v0.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 )
