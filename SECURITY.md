@@ -63,8 +63,20 @@ A device can ask for a password in ReinitializeDevice and DeviceCommunicationCon
 
 ### Listening
 
-- **`discover`**, **`whohas`**, **`events`** and **`router list`** bind UDP port 47808 on **all network interfaces** for as long as they run, and accept datagrams from any address, as BACnet requires. bacnetctl is not a BACnet device and serves no requests: it acknowledges a confirmed notification that is addressed to it, and rejects any other confirmed request
+- **`discover`**, **`whohas`**, **`events`** and **`router list`** bind UDP port 47808 on **all network interfaces** for as long as they run, and accept datagrams from any address, as BACnet requires. These commands serve no requests: they acknowledge a confirmed notification that is addressed to them, and reject any other confirmed request
+- **`server run`** is a BACnet device: see [Serving a Simulated Device](#serving-a-simulated-device)
 - The other commands bind a free UDP port for the duration of one invocation
+
+### Serving a Simulated Device
+
+`server run` serves one BACnet device with go-bacnet's server. It binds UDP port 47808 on **all network interfaces** unless `--listen` and `--port` say otherwise, broadcasts an I-Am when it starts, and answers every client that reaches it.
+
+- **Anyone who reaches it can change it.** Writes, CreateObject, DeleteObject, AtomicWriteFile, AddListElement and RemoveListElement are carried out for any client. `--read-only` refuses every write (write-access-denied) and delete (object-deletion-not-permitted). Every write and delete is printed as a record, with the value the client sent, refused or not
+- **Device management.** Without `--password`, DeviceCommunicationControl and ReinitializeDevice are accepted from anyone: with disable-initiation a client stops the served device from initiating messages (I-Am, COV and event notifications) for a duration or until enabled again. DISABLE is refused with service-request-denied, as go-bacnet's [server support table](https://github.com/otfabric/go-bacnet/blob/main/docs/SERVER_SUPPORT.md) records. ReinitializeDevice is acknowledged and printed; the process does not restart. The password travels in clear text like any BACnet password (see above); give it with `BACNETCTL_SERVER_PASSWORD` to keep it out of the shell history. bacnetctl never prints it
+- **Identity.** A device instance must be unique in a BACnet internetwork. A served device with the instance of a real one confuses every client that finds both. Keep it on loopback (`--listen 127.0.0.1`) or a test network, and pick an instance with `--instance`
+- **BBMD.** With `--bbmd` it also forwards broadcasts to the BBMDs of `--bdt` and, unless `--no-foreign-devices`, accepts foreign device registrations from any address. Broadcasts from that subnet then reach the peers, and the other way round
+- **Bounds.** Requests are decoded under go-bacnet's limits: `--max-apdu` and `--max-segments` bound what a client can make it reassemble. A device file is read up to 16 MiB, and one that cannot be served is refused before anything is bound
+- **State is in memory.** Nothing a client does is written to disk: the device file is not changed
 
 ### Output
 
