@@ -5,12 +5,16 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/otfabric/bacnetctl/internal/errs"
 )
 
 // runningServer is `bacnetctl server run` in the background, stopped as by Ctrl-C.
@@ -152,4 +156,20 @@ func TestServerRunErrors(t *testing.T) {
 	run(t, "server", "run", "--listen", "127.0.0.1", "--port", "0", "--duration", "1", "--format", "table").want(t, 0).has(t, "EVENT", "listening")
 	run(t, "server", "run", "--help").want(t, 0).has(t, "BACNETCTL_SERVER_PASSWORD").lacks(t, "hidden-pw")
 	run(t, "server").want(t, 0).has(t, "run", "example")
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("pipe closed") }
+
+// server example on a stdout that cannot be written fails with an output error.
+func TestServerExampleOutputFails(t *testing.T) {
+	root := NewRootCmd()
+	root.SetArgs([]string{"server", "example"})
+	root.SetOut(failingWriter{})
+	root.SetErr(io.Discard)
+	err := root.ExecuteContext(context.Background())
+	if e, ok := errs.As(err); !ok || e.Kind != errs.KindOutput {
+		t.Fatalf("server example: %v", err)
+	}
 }
