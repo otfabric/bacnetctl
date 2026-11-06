@@ -6,7 +6,7 @@
 |------|---------|
 | 0 | Success (`ExitOK`) |
 | 2 | Usage (`KindUsage`): unknown command or flag, wrong number of arguments, a value a flag cannot hold, a device management command or a `delete` without `--yes-i-am-sure` |
-| 3 | Invalid input (`KindInvalidInput`): an object, property, value, address, combination of flags or environment variable that does not make sense. Nothing was sent |
+| 3 | Invalid input (`KindInvalidInput`): an object, property, value, address, combination of flags or environment variable that does not make sense, or a device file of `server run` that cannot be served. Nothing was sent (nothing was bound) |
 | 4 | Transport (`KindTransport`): the local UDP port is in use or cannot be opened, a host name does not resolve, a datagram cannot be sent, a BBMD does not accept the foreign device registration |
 | 5 | Timeout (`KindTimeout`): the device did not answer in time. For a request that changes the device (a write, an acknowledgement, a restart) this means the **outcome is unknown**: code `outcome_unknown` |
 | 6 | Device or protocol (`KindDevice`, `KindProtocol`): the device refused the request with an Error, a Reject or an Abort, or what it sent violates the protocol |
@@ -41,6 +41,8 @@ The code of a `device_error` is not a closed list: it follows what the device an
 **Nothing found:** `discover`, `whohas` and `router list` exit `0` with an empty result when nothing answers. A device that does not answer a request addressed to it is a timeout (`5`).
 
 **Streaming commands:** `monitor` and `events` write one record at a time. Stopping them with Ctrl-C (SIGINT) or SIGTERM ends the stream normally and does not change the exit code: they exit `0` when they end by `--count`, `--duration` or a signal. A subscription the device refuses ends `monitor` before it starts, with the fatal code of that error.
+
+**`server run`:** serves until it is stopped. Ctrl-C (SIGINT), SIGTERM or the end of `--duration` stops it normally: exit `0`. An unreadable device file is `3` with `input_file_open_failed`; a device file that is not JSON, has an unknown field, a field that does not apply to its object type, an object type bacnetctl cannot serve or a value out of range, is `3` with `invalid_config`; a flag that does not make sense (`--listen` not IPv4, `--bdt` without `--bbmd`, a password longer than 20 octets) is `3` with `invalid_input`. Nothing is bound then. A port another program holds is `4` (`transport_port_in_use`). stdout that cannot be written while serving is `10` (`output_write_failed`).
 
 **Commands that change a device:** `write`, `release`, `create`, `delete`, `ack`, `time sync`, `file put`, `reinitialize` and `comm-control` validate everything before sending; a rejected invocation exits `2` or `3` and has sent nothing. A refusal by the device exits `6`, a missing answer `5` (outcome unknown). `time sync` is an unconfirmed service: it exits `0` once the request is sent.
 

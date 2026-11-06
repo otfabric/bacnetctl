@@ -1,5 +1,39 @@
 # bacnetctl Releases
 
+## v0.4.0
+
+**Date:** unreleased
+**Previous release:** v0.3.0
+
+Requires **Go 1.26+**. Built on go-bacnet v0.6.0.
+
+> **Not releasable yet.** go-bacnet is pinned to the pseudo-version of commit c6a3b94 on its main branch (`v0.5.1-0.20261106173105-c6a3b946b2ce`), which holds the server. AGENTS.md rule 4 requires released tags: this must not be merged or released until go-bacnet v0.6.0 is tagged and `go.mod` pins it.
+
+### Summary
+
+New command group `server`: `server run` serves a simulated BACnet/IP device with go-bacnet's server, from a JSON device file or a built-in example, and prints what clients change as records; `server example` prints the example device file. One change in behaviour: property 133 is named `enable` (was `log-enable`).
+
+### Added
+
+- **`server run`:** serves one device on `--listen`/`--port` (default every address, UDP 47808; `--port 0` a free port) until Ctrl-C, SIGTERM or `--duration`, then exits `0`. The device comes from `--config` (a device file, a superset of the bacnet-interop device fixtures: `device-server-v1` and `device-baseline-v2` load as they are) or the built-in example; `--instance`, `--name` and `--vendor-id` override its identity. Analog, binary and multi-state inputs, outputs and values, characterstring, integer and positive-integer values, notification classes, trend logs and files; CreateObject for the types of `object_lifecycle.creatable_types`. Options: `--read-only`, `--password` (`BACNETCTL_SERVER_PASSWORD`, never printed), `--max-apdu`, `--max-segments`, and a BBMD on the same address (`--bbmd`, `--bdt`, `--bbmd-address`, `--no-foreign-devices`). Support and evidence are those of go-bacnet's docs/SERVER_SUPPORT.md; no interoperability is claimed beyond them.
+- **`server run` records** on stdout (text, table or JSON Lines): `listening` (with the bound address), `write`, `create`, `delete`, `reinitialize`, `time-sync`; shapes in docs/json-output.md.
+- **Exit codes** of `server run` in docs/exitcodes.md: `3` with `invalid_config` for a device file that cannot be served, `input_file_open_failed` for one that cannot be read, `invalid_input` for flags; `4` for a port in use. No new codes.
+- **`server example`:** prints the built-in example device as a device file.
+- New environment variables `BACNETCTL_SERVER_*` (see the README); `BACNETCTL_DURATION` and `BACNETCTL_INTERFACE` also apply to `server run`.
+
+### Changed
+
+- **Property 133** is named `enable`, as in ANSI/ASHRAE 135 and go-bacnet (was `log-enable`). This changes the `property` field of `read`, `describe` and `monitor` output for that property; `log-enable` is still accepted as input.
+- Built on go-bacnet v0.6.0 (pre-release pin, see above).
+
+### Tests
+
+- Device file parsing and validation, error paths included; the two bacnet-interop fixtures (copies in internal/bac/testdata, from bacnet-interop 4a5b44c).
+- The server on 127.0.0.1 port 0, read and written by the go-bacnet client and by the bacnetctl commands: writes, create and delete, read-only, password, time synchronization, BBMD table, port in use, output failure, record queue overflow.
+- e2e: the built binary serves, is read and written, and stops with exit `0` on SIGINT and SIGTERM; an invalid device file exits `3`.
+
+---
+
 ## v0.3.0
 
 **Date:** 2026-11-04

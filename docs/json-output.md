@@ -90,12 +90,14 @@ Used for a fatal error (`{"error": {…}}`) and for a row that failed.
 | `router list` | `mode`, `target`, `duration_ms`, `count`, `routers`: `network`, `router` (address), `state` (`"available"`, `"busy"`, `"rejected"`, `"expired"`) |
 | `bbmd bdt`, `bbmd fdt` | `bbmd`, `table` (`"bdt"` or `"fdt"`), `count`, `entries`: `address` and `mask` (BDT) or `ttl` and `remaining` in seconds (FDT) |
 | `reinitialize`, `comm-control` | `target`, `request` (`"reinitialize-device"` or `"device-communication-control"`), `state`, `duration_minutes` (when given), `status` (`"acknowledged"`), `rtt_ms`. The password is never part of any output |
+| `server run` (stream) | one object per record (JSON Lines): `timestamp`, `event` (`"listening"`, `"write"`, `"create"`, `"delete"`, `"reinitialize"`, `"time-sync"`), `gap` when records before this one were lost. **listening** (the first record): `address` (the bound `host:port`), `name`, `objects` (count, the Device included), the **object** fields of the Device object. **write**: the **object** and **property** fields, `value` (a **Value**: what the client wrote), `priority` (when the request carried one), `status` (`"allowed"`, or `"refused"` with `--read-only`; an allowed write can still be refused by the object). **create**, **delete**: the **object** fields; delete also `status`. **reinitialize**: `state`. **time-sync**: `time` (as sent, `YYYY-MM-DD HH:MM:SS.hh`), `utc`. The password is never part of any output |
+| `server example` | not a result: the device file of the built-in example device (indented JSON, whatever `--format` says); its fields are in the README |
 | `decode` | `length`, `layers`: `layer` (`"bvlc"`, `"npdu"`, `"apdu"`, `"service"`), `summary`, `fields` (`name`, `value`: a string, number or boolean); `error` when decoding stopped before the end. The fields of a layer are for reading: their names and values follow the frame, and are not part of the contract |
 | `types`, `properties` | `what` (`"object-types"` or `"properties"`), `count`, `names`: `id`, `name`, `alias` |
 | `version` | `version`, `go_version`, `os`, `arch` and, in a release build, `tag`, `commit`, `build_date` |
 
 ## Streams and stderr
 
-- A streaming command (`monitor`, `events`) writes **compact** JSON, one object per line; every other command writes **one** indented JSON document.
+- A streaming command (`monitor`, `events`, `server run`) writes **compact** JSON, one object per line; every other command writes **one** indented JSON document.
 - Progress, summaries and the `--debug` diagnostics go to **stderr**, as text, in every format. stdout holds nothing but the result.
 - `file get --output -` is the exception that proves the rule: the file content takes stdout, and the result goes to stderr.

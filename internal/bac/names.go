@@ -72,7 +72,7 @@ var propertyNames = map[bacnet.PropertyIdentifier]string{
 	117: "units", 118: "update-interval", 119: "utc-offset", 120: "vendor-identifier", 121: "vendor-name",
 	122: "vt-classes-supported", 123: "weekly-schedule", 124: "attempted-samples", 125: "average-value",
 	126: "buffer-size", 127: "client-cov-increment", 128: "cov-resubscription-interval", 130: "event-time-stamps",
-	131: "log-buffer", 132: "log-device-object-property", 133: "log-enable", 134: "log-interval",
+	131: "log-buffer", 132: "log-device-object-property", 133: "enable", 134: "log-interval",
 	135: "maximum-value", 136: "minimum-value", 137: "notification-threshold", 139: "protocol-revision",
 	140: "records-since-notification", 141: "record-count", 142: "start-time", 143: "stop-time",
 	144: "stop-when-full", 145: "total-record-count", 146: "valid-samples", 147: "window-interval",
@@ -125,6 +125,8 @@ var propertyNames = map[bacnet.PropertyIdentifier]string{
 var propertyAliases = map[string]bacnet.PropertyIdentifier{
 	"pv": bacnet.PropertyPresentValue, "name": bacnet.PropertyObjectName, "desc": bacnet.PropertyDescription,
 	"flags": bacnet.PropertyStatusFlags, "oos": 81,
+	// The name of property 133 until bacnetctl v0.3.x; the standard (clause 21) names it enable.
+	"log-enable": bacnet.PropertyEnable,
 }
 
 // The special property identifiers of ReadPropertyMultiple.

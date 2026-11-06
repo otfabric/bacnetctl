@@ -145,6 +145,7 @@ An object is written **type:instance** (`analog-input:1`, or short `ai:1`), a pr
 | Time             | TimeSynchronization and UTCTimeSynchronization, to one device or broadcast.                                               |
 | Routers and BBMDs | Who-Is-Router-To-Network; devices behind a router addressed with `--network` and `--mac`; the broadcast distribution table and foreign device table of a BBMD. |
 | Device management | ReinitializeDevice and DeviceCommunicationControl, behind an explicit `--yes-i-am-sure`, with an optional password that is never printed. |
+| Serve            | `server run` serves a simulated device with go-bacnet's server, from a JSON device file (the device fixtures of bacnet-interop are device files) or a built-in example: Who-Is, reads and writes, COV, alarms, trend logs, files, object creation and deletion, time synchronization, device management with an optional password, and optionally a BBMD on the same address. What clients change is printed as records. |
 | Decode           | Offline decoding of a BACnet/IP datagram from hex: BVLC, NPDU, APDU and the service with its parameters.                  |
 | Names            | Object types and properties by name, short form (`ai`, `pv`) or number; `types` and `properties` list them. Engineering units, event states and status flags by name. Character strings in UTF-8, UCS-2, UCS-4 and ISO 8859-1. |
 | `--format`       | Every command that prints a result accepts **`--format text\|json\|table`** (or **`BACNETCTL_FORMAT`**); streams write JSON Lines. |
@@ -182,6 +183,9 @@ bacnetctl
 │   └── fdt              Read the foreign device table of a BBMD
 ├── reinitialize         Restart a device (ReinitializeDevice)
 ├── comm-control         Silence a device, or let it speak again
+├── server
+│   ├── run              Serve a simulated device (go-bacnet server)
+│   └── example          Print the built-in example device as a device file
 ├── decode               Decode a captured BACnet/IP datagram (offline)
 ├── types                List the object types bacnetctl knows by name
 ├── properties           List the property identifiers bacnetctl knows by name
@@ -412,6 +416,8 @@ bacnetctl bbmd bdt
 bacnetctl bbmd fdt
 bacnetctl reinitialize STATE
 bacnetctl comm-control STATE
+bacnetctl server run
+bacnetctl server example
 bacnetctl decode HEX...
 bacnetctl types
 bacnetctl properties
@@ -424,7 +430,7 @@ Every command has `--help`, with a description and examples.
 
 **Output format (`--format`):** every command that prints a result accepts **`--format text`** (default), **`json`** or **`table`**, or set **`BACNETCTL_FORMAT`**. It controls **only** the result on **stdout**. Progress, summaries and diagnostics go to **stderr**, so stdout can be piped or parsed as it is. The JSON shapes are a stable contract: see [docs/json-output.md](docs/json-output.md).
 
-**Streams:** `monitor` and `events` write one record as it happens: one line (**text**), one JSON object per line (**json**, JSON Lines) or table rows (**table**). They run until interrupted with Ctrl-C, which ends them normally.
+**Streams:** `monitor`, `events` and `server run` write one record as it happens: one line (**text**), one JSON object per line (**json**, JSON Lines) or table rows (**table**). They run until interrupted with Ctrl-C, which ends them normally.
 
 **Fatal errors:** with `--format json` a command writes a **single JSON error object** to stdout on failure (fields `kind`, `code`, `message`, and `bacnet` with what the device answered); with **text** or **table** it writes a single **`error:`** line to stderr and leaves stdout empty. That holds for every failure, including the ones before a command runs: an unknown flag or command, a missing argument, a malformed environment variable. Exit codes are stable:
 
@@ -885,6 +891,62 @@ bacnetctl comm-control enable --device 192.168.1.20 --yes-i-am-sure
 
 A device may ask for a password: `--password`, or the environment variable `BACNETCTL_PASSWORD`, which keeps it out of the shell history. BACnet sends the password in clear text. bacnetctl never prints it.
 
+#### Serve a simulated device
+
+`server run` serves one BACnet device on this computer with the server of [go-bacnet](https://github.com/otfabric/go-bacnet): for developing and testing clients (bacnetctl itself, a supervisor, a gateway) without hardware. What the server implements, and how well each part is verified, is in go-bacnet's [server support table](https://github.com/otfabric/go-bacnet/blob/main/docs/SERVER_SUPPORT.md); bacnetctl claims nothing beyond it. Values change only when clients write them: the device does not simulate a process.
+
+```console
+# The built-in example device, on every address, UDP port 47808, until Ctrl-C
+bacnetctl server run
+
+# A device file on loopback, on a free port, the records as JSON Lines
+bacnetctl server run --config device.json --listen 127.0.0.1 --port 0 --format json
+
+# In another terminal: use it like any device
+bacnetctl objects --device 127.0.0.1:47808 --values
+bacnetctl write --device 127.0.0.1:47808 av:1 pv 22.5 --priority 8
+
+# Also the BBMD of this subnet, with a peer BBMD on another one
+bacnetctl server run --listen 192.168.1.10 --bbmd --bdt 10.0.20.1
+
+# Start a device file of your own from the example
+bacnetctl server example > device.json
+```
+
+| Flag | Environment | Meaning |
+|------|-------------|---------|
+| `--config` | `BACNETCTL_SERVER_CONFIG` | Device file (JSON); without it the built-in example device (`server example` prints it) |
+| `--listen` | `BACNETCTL_SERVER_LISTEN` | IPv4 address to bind (default: every address) |
+| `--port` | `BACNETCTL_SERVER_PORT` | UDP port (default: `port` of the device file, or 47808; `0` = a free port, named in the listening record) |
+| `--interface` | `BACNETCTL_INTERFACE` | Interface whose broadcast address the I-Am and I-Have go to |
+| `--instance`, `--name`, `--vendor-id` | `BACNETCTL_SERVER_INSTANCE`, `_NAME`, `_VENDOR_ID` | Override the identity of the device file (vendor identifier 999 unless given) |
+| `--max-apdu` | `BACNETCTL_SERVER_MAX_APDU` | Largest APDU accepted, 50-1476 (default 1476) |
+| `--max-segments` | `BACNETCTL_SERVER_MAX_SEGMENTS` | Segments accepted per message, 2-255 (default 64; 0 = no segmentation) |
+| `--read-only` | `BACNETCTL_SERVER_READ_ONLY` | Refuse every write (write-access-denied) and delete (object-deletion-not-permitted) |
+| `--password` | `BACNETCTL_SERVER_PASSWORD` | Password that DeviceCommunicationControl and ReinitializeDevice must carry, at most 20 octets. Never printed. Not `BACNETCTL_PASSWORD`, which is what the client commands send |
+| `--bbmd` | `BACNETCTL_SERVER_BBMD` | Also be a BBMD on the same address: forward broadcasts and accept foreign devices |
+| `--bdt` | `BACNETCTL_SERVER_BDT` | Peer BBMDs, `host[:port][/mask]` (mask 255.255.255.255 unless given); the BBMD itself is added |
+| `--bbmd-address` | `BACNETCTL_SERVER_BBMD_ADDRESS` | The BBMD's own address (default: `--listen`, or the IPv4 address of `--interface`) |
+| `--no-foreign-devices` | `BACNETCTL_SERVER_NO_FOREIGN` | Refuse foreign device registrations |
+| `--duration` | `BACNETCTL_DURATION` | Stop after this many seconds (0 = until Ctrl-C or SIGTERM) |
+
+stdout gets a record when the device listens and one for every request that changes it: a write (with the value and priority; `allowed`, or `refused` with `--read-only`; an allowed write is handed to the object, which can still refuse the value), an object created or deleted, a ReinitializeDevice, a time synchronization. The start line and a summary go to stderr. Ctrl-C or SIGTERM ends the server normally with exit code 0. A device file that cannot be served is invalid input (exit 3, `invalid_config`; an unreadable file `input_file_open_failed`) and nothing is bound; a port in use is exit 4.
+
+**Device file.** A JSON object with `device_instance`, `device_name`, an optional `port` and `objects`, and an optional `object_lifecycle`. It is a superset of the device fixtures of [bacnet-interop](https://github.com/otfabric/bacnet-interop) (`fixtures/device`): `device-server-v1` and `device-baseline-v2` are served as they are; a fixture with an object type bacnetctl cannot serve (event-enrollment, audit-log, life-safety objects) is refused. An unknown field, or a field that does not apply to the type of its object, is refused.
+
+| Object `type` | Fields besides `type`, `instance`, `object_name`, `description`, `deletable` |
+|---|---|
+| `device` (optional; must match `device_instance` and `device_name`) | `location`, `vendor_id`, `vendor_name`, `model_name`, `firmware_revision`, `application_software_version`, `serial_number` |
+| `analog-input`, `analog-output`, `analog-value` | `present_value` (number), `commandable` (not inputs), `units` (name such as `degrees-celsius`, or number; default `no-units`), `cov_increment`, `intrinsic_reporting` (`notification_class`, `high_limit`, `low_limit`, `deadband`, `time_delay`: out-of-range alarms on every transition) |
+| `binary-input`, `binary-output`, `binary-value` | `present_value` (`"active"`/`"inactive"`, true/false, 1/0), `commandable` (not inputs), `active_text`, `inactive_text` |
+| `multi-state-input`, `multi-state-output`, `multi-state-value` | `present_value` (state 1..N), `commandable` (not inputs), `number_of_states` and/or `state_text` |
+| `characterstring-value`, `integer-value`, `positive-integer-value` | `present_value`, `commandable`, `units` (the integer ones) |
+| `notification-class` | (none) |
+| `trend-log` | `log_buffer` (`timestamp` local `2006-01-02T15:04:05` or RFC 3339, `real`), `buffer_size`, `enable` (default: true when it has records) |
+| `file` | `access_method` (`stream`, default, or `record`), `stream_data_base64` or `records` (strings), `read_only`, `file_type` |
+
+`object_lifecycle`: `creatable_types` (analog and binary inputs, outputs and values, file, characterstring-value, integer-value, positive-integer-value) are created by CreateObject and can be deleted again; `precreated_deletable` and `protected_objects` name objects of the file; `allocated_instance_range` is accepted and not applied (go-bacnet gives a created object the lowest free instance).
+
 #### Decode a captured frame
 
 ```console
@@ -935,7 +997,7 @@ bacnetctl read analog-input:1 present-value
 | **BACNETCTL_COUNT** | uint32 | **`monitor`**, **`events`**: stop after this many notifications (0 = until interrupted); **`trend`**: records to read | `--count` | 0 (trend: 20) |
 | **BACNETCTL_DEVICE** | string | Device address `host[:port]`; the router with `--network` and `--mac`; the BBMD for **`bbmd`** | `--device` | |
 | **BACNETCTL_DISCOVER_NETWORK** | string | **`discover`**, **`whohas`**: ask only this BACnet network, or `all` | `--network` | |
-| **BACNETCTL_DURATION** | uint32 | **`monitor`**, **`events`**: stop after this many seconds (0 = until interrupted) | `--duration` | 0 |
+| **BACNETCTL_DURATION** | uint32 | **`monitor`**, **`events`**, **`server run`**: stop after this many seconds (0 = until interrupted) | `--duration` | 0 |
 | **BACNETCTL_EVENT_TIME** | string | **`ack`**: date and time stamp of the event, RFC 3339, year 1900-2154 | `--event-time` | read from the object |
 | **BACNETCTL_FILE_START** | uint32 | **`file put`**: position in the file object to write at | `--start` | 0 |
 | **BACNETCTL_FILTER** | string | **`types`**, **`properties`**: only names that contain this text | `--filter` | |
@@ -963,6 +1025,20 @@ bacnetctl read analog-input:1 present-value
 | **BACNETCTL_PROPERTY** | string | **`monitor`**: subscribe to (or poll) this property; **`release`**: the property to relinquish | `--property` | (release: present-value) |
 | **BACNETCTL_RETRIES** | uint8 | Retransmissions of an unanswered read | `--retries` | 3 |
 | **BACNETCTL_ROUTER_NETWORK** | uint16 | **`router list`**: ask only for the router to this network (0 = all) | `--network` | 0 |
+| **BACNETCTL_SERVER_BBMD** | bool | **`server run`**: also be a BBMD | `--bbmd` | false |
+| **BACNETCTL_SERVER_BBMD_ADDRESS** | string | **`server run`**: the BBMD's own address | `--bbmd-address` | `--listen` |
+| **BACNETCTL_SERVER_BDT** | string | **`server run`**: peer BBMDs, comma-separated `host[:port][/mask]` | `--bdt` | |
+| **BACNETCTL_SERVER_CONFIG** | string | **`server run`**: device file | `--config` | built-in example |
+| **BACNETCTL_SERVER_INSTANCE** | string | **`server run`**: device instance | `--instance` | from the device file |
+| **BACNETCTL_SERVER_LISTEN** | string | **`server run`**: IPv4 address to bind | `--listen` | every address |
+| **BACNETCTL_SERVER_MAX_APDU** | uint16 | **`server run`**: largest APDU accepted | `--max-apdu` | 1476 |
+| **BACNETCTL_SERVER_MAX_SEGMENTS** | uint8 | **`server run`**: segments accepted (0 = no segmentation) | `--max-segments` | 64 |
+| **BACNETCTL_SERVER_NAME** | string | **`server run`**: device name | `--name` | from the device file |
+| **BACNETCTL_SERVER_NO_FOREIGN** | bool | **`server run`**: refuse foreign device registrations | `--no-foreign-devices` | false |
+| **BACNETCTL_SERVER_PASSWORD** | string | **`server run`**: password device management must carry. Read when the command runs; never shown in `--help` or in output | `--password` | |
+| **BACNETCTL_SERVER_PORT** | string | **`server run`**: UDP port (0 = a free port) | `--port` | from the device file, or 47808 |
+| **BACNETCTL_SERVER_READ_ONLY** | bool | **`server run`**: refuse every write and delete | `--read-only` | false |
+| **BACNETCTL_SERVER_VENDOR_ID** | string | **`server run`**: vendor identifier | `--vendor-id` | from the device file, or 999 |
 | **BACNETCTL_SEQUENCE** | string | **`ack`**: sequence number time stamp of the event | `--sequence` | read from the object |
 | **BACNETCTL_SOURCE** | string | **`ack`**: who acknowledges | `--source` | bacnetctl |
 | **BACNETCTL_START** | uint32 | **`trend`**: position of the first record | `--start` | 1 |
