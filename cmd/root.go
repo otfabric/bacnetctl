@@ -42,6 +42,7 @@ const (
 	groupWatch   = "watch"
 	groupNetwork = "network"
 	groupManage  = "manage"
+	groupServe   = "serve"
 	groupTools   = "tools"
 )
 
@@ -54,6 +55,7 @@ func NewRootCmd() *cobra.Command {
 		Long: `bacnetctl is a BACnet/IP client for the command line: it finds the devices of a
 building automation network, reads and writes their properties, lists their objects,
 watches values change, reads alarms, trend logs and files, and decodes captured frames.
+"bacnetctl server run" serves a simulated device, for testing without hardware.
 
 A device is addressed with --device host[:port] (UDP port 47808 unless given). A device
 behind a BACnet router (on MS/TP, for example) is addressed with the router as --device
@@ -73,6 +75,7 @@ stderr. Exit codes are stable: see docs/exitcodes.md.`,
 		&cobra.Group{ID: groupWatch, Title: "Watch values, alarms and events:"},
 		&cobra.Group{ID: groupNetwork, Title: "Routers and BBMDs:"},
 		&cobra.Group{ID: groupManage, Title: "Change how a device runs:"},
+		&cobra.Group{ID: groupServe, Title: "Serve a simulated device:"},
 		&cobra.Group{ID: groupTools, Title: "Tools:"},
 	)
 	add := func(group string, cmds ...*cobra.Command) {
@@ -87,6 +90,7 @@ stderr. Exit codes are stable: see docs/exitcodes.md.`,
 	add(groupWatch, newMonitorCmd(), newAlarmsCmd(), newAckCmd(), newEventsCmd())
 	add(groupNetwork, newRouterCmd(), newBBMDCmd())
 	add(groupManage, newReinitializeCmd(), newCommControlCmd())
+	add(groupServe, newServerCmd())
 	add(groupTools, newDecodeCmd(), newTypesCmd(), newPropertiesCmd(), newCompletionCmd(), newVersionCmd())
 	root.SetHelpCommandGroupID(groupTools)
 	return root

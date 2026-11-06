@@ -231,3 +231,25 @@ type ListConfig struct {
 	Filter       string `env:"BACNETCTL_FILTER" desc:"Only list names that contain this text" flag:"filter"`
 	OutputFormat string `env:"BACNETCTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
+
+// ServerRunConfig drives `server run`. The password is deliberately not bound here: it
+// must never show up as the default of a flag in --help.
+type ServerRunConfig struct {
+	DeviceFile   string   `env:"BACNETCTL_SERVER_CONFIG" desc:"Device file (JSON) that describes the device and its objects (default: the built-in example device; see server example)" flag:"config"`
+	Listen       string   `env:"BACNETCTL_SERVER_LISTEN" desc:"IPv4 address to bind (default: every address)" flag:"listen"`
+	Port         string   `env:"BACNETCTL_SERVER_PORT" desc:"UDP port to serve on (default: port of the device file, or 47808; 0 = a free port)" flag:"port"`
+	Interface    string   `env:"BACNETCTL_INTERFACE" desc:"Network interface whose subnet broadcast address is used for broadcasts (default: the subnet broadcast address of every interface, and 255.255.255.255)" flag:"interface"`
+	Instance     string   `env:"BACNETCTL_SERVER_INSTANCE" desc:"Device instance, 0-4194302 (default: from the device file)" flag:"instance"`
+	Name         string   `env:"BACNETCTL_SERVER_NAME" desc:"Device name, its object-name (default: from the device file)" flag:"name"`
+	VendorID     string   `env:"BACNETCTL_SERVER_VENDOR_ID" desc:"Vendor identifier of the device, 0-65535 (default: from the device file, or 999)" flag:"vendor-id"`
+	MaxAPDU      uint16   `env:"BACNETCTL_SERVER_MAX_APDU" desc:"Largest APDU the device accepts, 50-1476 octets" flag:"max-apdu"`
+	MaxSegments  uint8    `env:"BACNETCTL_SERVER_MAX_SEGMENTS" desc:"Segments the device accepts in one message, 2-255 (0 = no segmentation)" flag:"max-segments"`
+	ReadOnly     bool     `env:"BACNETCTL_SERVER_READ_ONLY" desc:"Refuse every write with write-access-denied" flag:"read-only"`
+	BBMD         bool     `env:"BACNETCTL_SERVER_BBMD" desc:"Also be a BBMD on the same address: forward broadcasts to the peers of --bdt and accept foreign devices" flag:"bbmd"`
+	BDT          []string `env:"BACNETCTL_SERVER_BDT" desc:"Peer BBMDs of the broadcast distribution table, host[:port][/mask] (mask 255.255.255.255 unless given); needs --bbmd" flag:"bdt"`
+	BBMDAddress  string   `env:"BACNETCTL_SERVER_BBMD_ADDRESS" desc:"The BBMD's own address, host[:port], as its peers reach it (default: --listen, or the address of --interface)" flag:"bbmd-address"`
+	NoForeign    bool     `env:"BACNETCTL_SERVER_NO_FOREIGN" desc:"Refuse foreign device registrations (with --bbmd)" flag:"no-foreign-devices"`
+	Duration     uint32   `env:"BACNETCTL_DURATION" desc:"Stop after this many seconds (0 = until interrupted)" flag:"duration"`
+	OutputFormat string   `env:"BACNETCTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	Debug        bool     // set from global --debug (root persistent flag)
+}
