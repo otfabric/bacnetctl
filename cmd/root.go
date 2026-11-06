@@ -51,7 +51,7 @@ const (
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "bacnetctl",
-		Short: "BACnet/IP command-line client",
+		Short: "BACnet/IP command-line client and simulated device",
 		Long: `bacnetctl is a BACnet/IP client for the command line: it finds the devices of a
 building automation network, reads and writes their properties, lists their objects,
 watches values change, reads alarms, trend logs and files, and decodes captured frames.
