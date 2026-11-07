@@ -38,7 +38,7 @@ From source (Go 1.26+): `go install github.com/otfabric/bacnetctl@latest`
 
 ### Shell completion
 
-Completion knows the commands, the object types, the property names and the values of flags.
+Completion knows the commands, the object types, the property names, the values of flags and the files the file flags take.
 
 ```bash
 # bash (needs the bash-completion package)
@@ -221,7 +221,7 @@ bacnetctl
 ├── types                List the object types bacnetctl knows by name
 ├── properties           List the property identifiers bacnetctl knows by name
 ├── completion           Generate shell completion script (bash|zsh|fish|powershell)
-└── version              Print version
+└── version              Print the version line (--json: one JSON line)
 ```
 
 ## Setup
@@ -289,7 +289,7 @@ bacnetctl server example
 bacnetctl decode HEX...
 bacnetctl types
 bacnetctl properties
-bacnetctl version
+bacnetctl version [--json]
 ```
 
 Every command has `--help`, with a description and examples.
@@ -1045,7 +1045,7 @@ No. bacnetctl speaks BACnet/IP over IPv4. MS/TP devices are reached through a BA
 
 ### How do I use bacnetctl in scripts and CI?
 
-Pass `--format json` (or set `BACNETCTL_FORMAT=json`). Progress goes to stderr, the result goes to stdout, and a failure returns one JSON error object with a stable exit code, whatever went wrong and however early. `bacnetctl version --format json` tells a script which build it runs. `bacnetctl read … present-value` in text format prints the bare value. See [General CLI usage](#general-cli-usage), [docs/json-output.md](docs/json-output.md) and [docs/exitcodes.md](docs/exitcodes.md).
+Pass `--format json` (or set `BACNETCTL_FORMAT=json`). Progress goes to stderr, the result goes to stdout, and a failure returns one JSON error object with a stable exit code, whatever went wrong and however early. `bacnetctl version --json` (or `--format json`) tells a script which build it runs, as one JSON line. `bacnetctl read … present-value` in text format prints the bare value. See [General CLI usage](#general-cli-usage), [docs/json-output.md](docs/json-output.md) and [docs/exitcodes.md](docs/exitcodes.md).
 
 ---
 

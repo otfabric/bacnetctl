@@ -46,7 +46,7 @@ func TestVersionPrintsTheBuiltVersion(t *testing.T) {
 	if want == "" {
 		t.Fatal("BACNETCTL_E2E_VERSION is not set; run make e2e")
 	}
-	if !strings.Contains(output, "bacnetctl") || !strings.Contains(output, want) {
+	if !strings.HasPrefix(output, "bacnetctl "+want+" (") {
 		t.Fatalf("output does not name bacnetctl %s:\n%s", want, output)
 	}
 }

@@ -94,7 +94,7 @@ Used for a fatal error (`{"error": {…}}`) and for a row that failed.
 | `server example` | not a result: the device file of the built-in example device (indented JSON, whatever `--format` says); its fields are in the README |
 | `decode` | `length`, `layers`: `layer` (`"bvlc"`, `"npdu"`, `"apdu"`, `"service"`), `summary`, `fields` (`name`, `value`: a string, number or boolean); `error` when decoding stopped before the end. The fields of a layer are for reading: their names and values follow the frame, and are not part of the contract |
 | `types`, `properties` | `what` (`"object-types"` or `"properties"`), `count`, `names`: `id`, `name`, `alias` |
-| `version` | `version`, `go_version`, `os`, `arch` and, in a release build, `tag`, `commit`, `build_date` |
+| `version` (`--json`, or `--format json`) | one line, keys in this order: `name`, `version` (no leading `v`; `"dev"` for a build without one), `tag` (`""` for a build that is not a release), `commit` (`"unknown"` when not recorded; `-dirty` for a modified tree), `built` (RFC 3339 UTC, or `"unknown"`), `libraries` (the OT Fabric libraries the binary is built on, sorted: `name`, `version`; `[]` when none), `go`, `platform` (`os/arch`). Every key is always present |
 
 ## Streams and stderr
 

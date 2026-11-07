@@ -1,5 +1,34 @@
 # bacnetctl Releases
 
+## v0.5.0
+
+**Date:** 2026-11-07
+**Previous release:** v0.4.0
+
+Requires **Go 1.26+**. Built on go-bacnet v0.6.0.
+
+### Summary
+
+`version` prints one line, the same in every OT Fabric CLI, and `version --json` one JSON object; shell completion now covers every flag and argument.
+
+### Added
+
+- **`version --json`:** one JSON line with the keys `name`, `version`, `tag`, `commit`, `built`, `libraries` (`name`, `version` of each OT Fabric library), `go`, `platform`, in that order and always present (docs/json-output.md). `--format json` and `BACNETCTL_FORMAT=json` print the same.
+- **Shell completion** of every flag that takes a value: the fixed values as before, `.json` device files for `server run --config`, any file for `file put --input` and `file get --output`, and no file names for addresses, numbers and other free values; the arguments of commands that take none complete no file names either. bash, zsh, fish and PowerShell.
+
+### Changed
+
+- **`version` output:** one line, `bacnetctl 0.5.0 (tag v0.5.0, commit <full sha>, built <date>, go-bacnet 0.6.0, go1.26.x, linux/amd64)`; a build without a tag leaves out the tag part, and a build without injected metadata (`go build`, `go install`) reports the module version or `dev` and the VCS revision (with `-dirty`) the toolchain recorded. Was a multi-line `bacnetctl version: …` block. `--format table` prints the line too.
+- **`version --format json`** keys (a JSON contract change): `name`, `version`, `tag`, `commit`, `built`, `libraries`, `go`, `platform`, `libraries` replace `version`, `tag`, `commit`, `build_date`, `go_version`, `os`, `arch`; the version has no leading `v`.
+- **Makefile:** injects the version and tag only when HEAD is exactly on a tag (any other build reports `dev`), the version without the leading `v`, and the full commit SHA, as the release workflow does.
+
+### Tests
+
+- Version line and JSON with and without a tag, development fallback, key order, `--json`, `--format json|table|text` and `BACNETCTL_FORMAT=json`.
+- `__complete` for the four shells and for flags of every kind; a walk of the command tree fails for a flag that takes a value without completion, and for one whose usage lists values that completes none.
+
+---
+
 ## v0.4.0
 
 **Date:** 2026-11-06
