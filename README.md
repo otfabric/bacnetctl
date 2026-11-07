@@ -16,32 +16,11 @@ and troubleshoot BACnet/IP networks. Serve a simulated BACnet/IP
 device from a JSON device file, to develop and test supervisors,
 gateways and scripts without hardware.
 
-Built in pure Go using the
-[OTFabric go-bacnet](https://github.com/otfabric/go-bacnet)
-library, bacnetctl provides:
-
-- BACnet/IP device discovery (Who-Is / I-Am)
-- Property reads and writes
-- BACnet object enumeration and inspection
-- COV subscriptions and real-time monitoring
-- Alarm and event handling
-- BBMD and routed BACnet network diagnostics
-- BACnet packet decoding
-- A simulated BACnet/IP device (`server run`): objects from a JSON device file; reads, writes, COV, alarms, trend logs and files; optionally a BBMD
-- Script-friendly JSON output
-- Standalone binaries for Linux, macOS and Windows
-
-**No runtime dependencies, no CGO and no installation of Go required.**
-
-> **Scope:** a BACnet/IP client, and with `server run` one simulated device for development and testing. The simulated device keeps its state in memory and does not model a process: values change when clients write them. It is not meant to stand in for a controller on a plant network.
-
 It is built for commissioning and point-to-point checks, troubleshooting a device or a network, integration work and scripts. Output can be plain text, a table or JSON with stable exit codes, so it works in pipelines as well as at a terminal. It is written in Go on top of [go-bacnet](https://github.com/otfabric/go-bacnet), whose client is behind the client commands and whose server is behind `server run` ([Serve a simulated device](#serve-a-simulated-device)).
 
 **Quick links:** [Quick start](#quick-start) · [Features](#features) · [Install](#install) · [BACnet in two minutes](#bacnet-in-two-minutes) · [Addressing](#addressing-a-device) · [Commands](#common-commands) · [FAQ](#faq)
 
 > **Responsible use:** bacnetctl sends real BACnet requests, and BACnet/IP has no authentication: whoever can reach a device can read and command it. Only use it on devices and networks you own or are authorized to work on. `write` and `release` change what a plant does (a fan, a valve, a setpoint), `time sync` changes clocks, `file put` can deliver a configuration, and `reinitialize` and `comm-control` restart or silence a device. Know what an object controls before you write to it. `server run` answers whoever can reach it and, without `--read-only`, accepts their writes; with `--bbmd` it forwards broadcasts between subnets. Give it a device instance no real device on that network has, and keep it on loopback or a test network. See [SECURITY.md](SECURITY.md).
-
-> **Status:** the client commands are tested against a simulated device and were run by hand against five open-source BACnet stacks in containers. `server run` was run against the client modes of three open-source stacks (bacnet-stack, BACnet4J, BACpypes3). Neither has been run against physical devices; see [What has it been tested with?](#what-has-it-been-tested-with)
 
 ## Install
 
@@ -73,6 +52,10 @@ From source (Go 1.26+): `go install github.com/otfabric/bacnetctl@latest`
 - **Decode a capture** — `decode` takes the hex of a datagram and shows it layer by layer, offline.
 - **Script-friendly** — `--format text|json|table` on every command, a single JSON error object on failure (also for a mistyped flag), stable exit codes and `BACNETCTL_*` environment variables.
 - **One-line install** — Linux, macOS and Windows (x86-64 and ARM), see [Install](#install); a single binary, no runtime to install.
+
+> **Scope:** a BACnet/IP client, and with `server run` one simulated device for development and testing. The simulated device keeps its state in memory and does not model a process: values change when clients write them. It is not meant to stand in for a controller on a plant network.
+
+> **Status:** the client commands are tested against a simulated device and were run by hand against five open-source BACnet stacks in containers. `server run` was run against the client modes of three open-source stacks (bacnet-stack, BACnet4J, BACpypes3). Neither has been run against physical devices; see [What has it been tested with?](#what-has-it-been-tested-with)
 
 ---
 
