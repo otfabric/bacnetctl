@@ -1,0 +1,10 @@
+{
+  "clis": [
+    {
+      "name": "bacnetctl",
+      "manifest": "./cmd",
+      "exit_codes": "internal/errs",
+      "json_types": "internal/types"
+    }
+  ]
+}
