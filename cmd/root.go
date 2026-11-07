@@ -9,15 +9,15 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"runtime"
 	"strings"
 	"syscall"
 
+	"github.com/otfabric/bacnetctl/internal/buildinfo"
+	"github.com/otfabric/bacnetctl/internal/cli"
 	"github.com/otfabric/bacnetctl/internal/config"
 	"github.com/otfabric/bacnetctl/internal/errs"
 	"github.com/otfabric/bacnetctl/internal/format"
 	"github.com/otfabric/bacnetctl/internal/runner"
-	"github.com/otfabric/bacnetctl/internal/types"
 	"github.com/spf13/cobra"
 )
 
@@ -93,6 +93,8 @@ stderr. Exit codes are stable: see docs/exitcodes.md.`,
 	add(groupServe, newServerCmd())
 	add(groupTools, newDecodeCmd(), newTypesCmd(), newPropertiesCmd(), newCompletionCmd(), newVersionCmd())
 	root.SetHelpCommandGroupID(groupTools)
+	// Every other flag and argument completes no file names, except these files.
+	cli.CompleteRest(root, map[string][]string{"config": {"json"}, "input": nil, "output": nil}, nil)
 	return root
 }
 
@@ -100,23 +102,26 @@ func newVersionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the version of bacnetctl",
-		Args:  cobra.NoArgs,
+		Long: `Print the version of bacnetctl on one line: the version, the git tag and commit it
+was built from, the build date, the Go version and the platform. --json (or --format
+json) prints the same as one JSON object.`,
+		Args: cobra.NoArgs,
 	}
 	cfg := config.VersionConfig{OutputFormat: textFormat}
 	wire(cmd, &cfg)
+	cmd.Flags().Bool("json", false, "Print the version as one JSON object (as --format json)")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		return runner.RunFormattedChecked(cmd, cfg.OutputFormat, func() error { return nil },
-			func(context.Context) (any, error) {
-				ver := strings.TrimSpace(buildMeta.version)
-				if ver == "" {
-					ver = "(unknown)"
-				}
-				return &types.VersionResult{
-					Version: ver, Tag: strings.TrimSpace(buildMeta.tag), Commit: strings.TrimSpace(buildMeta.commit),
-					BuildDate: strings.TrimSpace(buildMeta.buildDate), GoVersion: runtime.Version(),
-					OS: runtime.GOOS, Arch: runtime.GOARCH,
-				}, nil
-			})
+		outFmt, err := runner.AttachOutputFormat(cmd, cfg.OutputFormat)
+		if err != nil {
+			return err
+		}
+		info := buildinfo.Resolve("bacnetctl", buildMeta.version, buildMeta.tag, buildMeta.commit, buildMeta.buildDate)
+		line := info.String()
+		if asJSON, _ := cmd.Flags().GetBool("json"); asJSON || outFmt == format.FormatJSON {
+			line = info.JSON()
+		}
+		_, err = fmt.Fprintln(cmd.OutOrStdout(), line)
+		return err
 	}
 	return cmd
 }

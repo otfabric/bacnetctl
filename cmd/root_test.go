@@ -3,24 +3,31 @@
 package cmd
 
 import (
+	"encoding/json"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/otfabric/bacnetctl/internal/bactest"
-	"github.com/otfabric/bacnetctl/internal/types"
+	"github.com/otfabric/bacnetctl/internal/buildinfo"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 func TestVersionHelpAndUsage(t *testing.T) {
-	SetBuildMeta("1.2.3", "v1.2.3", "abc1234", "2026-01-31T12:00:00Z")
+	SetBuildMeta("1.2.3", "v1.2.3", sha, "2026-01-31T12:00:00Z")
 	t.Cleanup(func() { SetBuildMeta("dev", "", "", "") })
-	run(t, "version").want(t, 0).has(t, "bacnetctl version: 1.2.3", "tag:         v1.2.3", "commit:      abc1234", "build date:  2026-01-31T12:00:00Z", "go version:", "platform:")
-	SetBuildMeta(" ", "", "", "")
-	r := run(t, "version").want(t, 0).has(t, "bacnetctl version: (unknown)")
-	if strings.Contains(r.stdout, "commit:") {
-		t.Errorf("empty build metadata is printed:\n%s", r.stdout)
+	platform := runtime.Version() + ", " + runtime.GOOS + "/" + runtime.GOARCH
+	if r := run(t, "version").want(t, 0); r.stdout != "bacnetctl 1.2.3 (tag v1.2.3, commit "+sha+", built 2026-01-31T12:00:00Z, "+libText+platform+")\n" {
+		t.Errorf("version: %q", r.stdout)
+	}
+	SetBuildMeta("v1.2.3", " ", sha, "2026-01-31T12:00:00Z")
+	if r := run(t, "version").want(t, 0); r.stdout != "bacnetctl 1.2.3 (commit "+sha+", built 2026-01-31T12:00:00Z, "+libText+platform+")\n" {
+		t.Errorf("version without a tag: %q", r.stdout)
+	}
+	SetBuildMeta("dev", "", "", "")
+	if r := run(t, "version").want(t, 0); !strings.HasPrefix(r.stdout, "bacnetctl dev (commit ") || !strings.HasSuffix(r.stdout, ", built unknown, "+libText+platform+")\n") {
+		t.Errorf("development build: %q", r.stdout)
 	}
 
 	run(t).want(t, 0).has(t, "Find devices and objects:", "discover", "read", "write", "monitor", "decode", "completion", "version")
@@ -77,6 +84,8 @@ func TestCompletion(t *testing.T) {
 		{[]string{"reinitialize", "w"}, []string{"warmstart"}, []string{"coldstart"}},
 		{[]string{"comm-control", ""}, []string{"enable", "disable", "disable-initiation"}, nil},
 		{[]string{"completion", ""}, []string{"bash", "zsh", "fish", "powershell"}, nil},
+		{[]string{"server", "run", "--config", ""}, []string{"json", ":8"}, nil},
+		{[]string{"read", "--device", ""}, []string{":4"}, nil},
 	} {
 		r := run(t, append([]string{cobra.ShellCompNoDescRequestCmd}, c.args...)...).want(t, 0)
 		for _, w := range c.want {
@@ -245,19 +254,42 @@ func TestUsageErrorsAsJSON(t *testing.T) {
 	run(t, "nope", "--format", "text").want(t, 2).silent(t).errHas(t, "error: unknown command")
 }
 
+// libText and libJSON are how the OT Fabric libraries of this binary appear in the version
+// line and in its JSON; their formatting is tested in internal/buildinfo.
+var libText, libJSON = func() (string, string) {
+	libs := buildinfo.Resolve("", "", "", "", "").Libraries
+	var text string
+	for _, l := range libs {
+		text += l.Name + " " + l.Version + ", "
+	}
+	js, _ := json.Marshal(libs)
+	return text, string(js)
+}()
+
+const sha = "1802d0f9afe8642d1e278120b76fcdfac967cb9e"
+
+// --json, --format json and BACNETCTL_FORMAT=json print the same JSON line; text and
+// table print the text line.
 func TestVersionFormats(t *testing.T) {
-	SetBuildMeta("1.2.3", "v1.2.3", "abc1234", "2026-01-31T12:00:00Z")
+	SetBuildMeta("1.2.3", "v1.2.3", sha, "2026-01-31T12:00:00Z")
 	t.Cleanup(func() { SetBuildMeta("dev", "", "", "") })
-	var v types.VersionResult
-	run(t, "version", "--format", "json").want(t, 0).decode(t, &v)
-	if v.Version != "1.2.3" || v.Tag != "v1.2.3" || v.Commit != "abc1234" || v.BuildDate != "2026-01-31T12:00:00Z" ||
-		v.GoVersion != runtime.Version() || v.OS != runtime.GOOS || v.Arch != runtime.GOARCH {
-		t.Errorf("version: %+v", v)
+	want := `{"name":"bacnetctl","version":"1.2.3","tag":"v1.2.3","commit":"` + sha + `","built":"2026-01-31T12:00:00Z","libraries":` + libJSON + `,"go":"` +
+		runtime.Version() + `","platform":"` + runtime.GOOS + "/" + runtime.GOARCH + `"}` + "\n"
+	for _, args := range [][]string{{"--json"}, {"--format", "json"}, {"--json", "--format", "table"}} {
+		if r := run(t, append([]string{"version"}, args...)...).want(t, 0); r.stdout != want {
+			t.Errorf("version %v:\n got %s\nwant %s", args, r.stdout, want)
+		}
 	}
-	run(t, "version", "--format", "table").want(t, 0).has(t, "FIELD", "version", "1.2.3", "platform", runtime.GOOS+"/"+runtime.GOARCH)
+	text := run(t, "version").want(t, 0).stdout
+	if r := run(t, "version", "--format", "table").want(t, 0); r.stdout != text {
+		t.Errorf("version --format table: %q", r.stdout)
+	}
+	t.Setenv("BACNETCTL_FORMAT", "json")
+	if r := run(t, "version").want(t, 0); r.stdout != want {
+		t.Errorf("BACNETCTL_FORMAT=json: %s", r.stdout)
+	}
+	if r := run(t, "version", "--format", "text").want(t, 0); r.stdout != text {
+		t.Errorf("--format text over BACNETCTL_FORMAT=json: %s", r.stdout)
+	}
 	run(t, "version", "--format", "yaml").want(t, 3)
-	SetBuildMeta("dev", "", "", "")
-	if m := run(t, "version", "--format", "json").want(t, 0).object(t); m["tag"] != nil || m["commit"] != nil || m["build_date"] != nil {
-		t.Errorf("empty build metadata is printed: %v", m)
-	}
 }
