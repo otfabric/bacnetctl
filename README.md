@@ -36,6 +36,28 @@ Linux (amd64, arm64, armv7), macOS (Intel, Apple silicon) and Windows (amd64, ar
 
 From source (Go 1.26+): `go install github.com/otfabric/bacnetctl@latest`
 
+### Shell completion
+
+Completion knows the commands, the object types, the property names and the values of flags.
+
+```bash
+# bash (needs the bash-completion package)
+mkdir -p ~/.local/share/bash-completion/completions
+bacnetctl completion bash > ~/.local/share/bash-completion/completions/bacnetctl
+
+# zsh: a directory on your fpath, then restart the shell
+mkdir -p ~/.zsh/completions && bacnetctl completion zsh > ~/.zsh/completions/_bacnetctl
+# and once in ~/.zshrc:  fpath=(~/.zsh/completions $fpath); autoload -U compinit && compinit
+
+# fish
+mkdir -p ~/.config/fish/completions && bacnetctl completion fish > ~/.config/fish/completions/bacnetctl.fish
+```
+
+```powershell
+# PowerShell: add this line to your profile ($PROFILE)
+bacnetctl completion powershell | Out-String | Invoke-Expression
+```
+
 ---
 
 ## Why bacnetctl?
@@ -204,27 +226,6 @@ bacnetctl
 
 ## Setup
 
-### Shell completion
-
-Completion knows the commands, the object types, the property names and the values of flags. Install it once:
-
-```bash
-# bash (Linux; needs the bash-completion package)
-bacnetctl completion bash | sudo tee /etc/bash_completion.d/bacnetctl > /dev/null
-
-# zsh (macOS and Linux): a directory on your fpath, then restart the shell
-mkdir -p ~/.zsh/completions && bacnetctl completion zsh > ~/.zsh/completions/_bacnetctl
-# and once in ~/.zshrc:  fpath=(~/.zsh/completions $fpath); autoload -U compinit && compinit
-
-# fish
-bacnetctl completion fish > ~/.config/fish/completions/bacnetctl.fish
-```
-
-```powershell
-# PowerShell: add this line to your profile ($PROFILE)
-bacnetctl completion powershell | Out-String | Invoke-Expression
-```
-
 ### Firewall and privileges
 
 bacnetctl needs no administrator rights: it opens an ordinary UDP socket. Commands that talk to one device use a free local port. `discover`, `whohas`, `router list` and `events` listen on UDP 47808, because devices answer broadcasts there: allow inbound UDP 47808 in the host firewall (Windows asks on first use), and stop other BACnet software on the same computer, which holds that port. See the [FAQ](#udp-port-47808-is-in-use-what-now).
@@ -315,8 +316,6 @@ Every command has `--help`, with a description and examples.
 | 130 | Interrupted before a result |
 
 See [docs/exitcodes.md](docs/exitcodes.md) for the details and the `code` values.
-
-**Shell completion:** `bacnetctl completion bash` (or `zsh`, `fish`, `powershell`) prints a completion script; for example `source <(bacnetctl completion bash)`. Object arguments complete to the object types, property arguments to the property names, flags with a fixed set of values to those values.
 
 ### Addressing a device
 
