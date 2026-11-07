@@ -37,11 +37,25 @@ library, bacnetctl provides:
 
 It is built for commissioning and point-to-point checks, troubleshooting a device or a network, integration work and scripts. Output can be plain text, a table or JSON with stable exit codes, so it works in pipelines as well as at a terminal. It is written in Go on top of [go-bacnet](https://github.com/otfabric/go-bacnet), whose client is behind the client commands and whose server is behind `server run` ([Serve a simulated device](#serve-a-simulated-device)).
 
-**Quick links:** [Quick start](#quick-start) · [Features](#features) · [Installation](#installation) · [BACnet in two minutes](#bacnet-in-two-minutes) · [Addressing](#addressing-a-device) · [Commands](#common-commands) · [FAQ](#faq)
+**Quick links:** [Quick start](#quick-start) · [Features](#features) · [Install](#install) · [BACnet in two minutes](#bacnet-in-two-minutes) · [Addressing](#addressing-a-device) · [Commands](#common-commands) · [FAQ](#faq)
 
 > **Responsible use:** bacnetctl sends real BACnet requests, and BACnet/IP has no authentication: whoever can reach a device can read and command it. Only use it on devices and networks you own or are authorized to work on. `write` and `release` change what a plant does (a fan, a valve, a setpoint), `time sync` changes clocks, `file put` can deliver a configuration, and `reinitialize` and `comm-control` restart or silence a device. Know what an object controls before you write to it. `server run` answers whoever can reach it and, without `--read-only`, accepts their writes; with `--bbmd` it forwards broadcasts between subnets. Give it a device instance no real device on that network has, and keep it on loopback or a test network. See [SECURITY.md](SECURITY.md).
 
 > **Status:** the client commands are tested against a simulated device and were run by hand against five open-source BACnet stacks in containers. `server run` was run against the client modes of three open-source stacks (bacnet-stack, BACnet4J, BACpypes3). Neither has been run against physical devices; see [What has it been tested with?](#what-has-it-been-tested-with)
+
+## Install
+
+```bash
+curl -fsSL https://get.otfabric.io/bacnetctl | sh
+```
+
+```powershell
+irm https://get.otfabric.io/bacnetctl.ps1 | iex
+```
+
+Linux (amd64, arm64, armv7), macOS (Intel, Apple silicon) and Windows (amd64, arm64). The installer verifies the release's SHA-256 checksum, installs per user without `sudo` (`~/.local/bin`, Windows `%LOCALAPPDATA%\OTFabric\bin`), and upgrades in place when run again. Pin a version with `OTF_VERSION=x.y.z`; for CI, containers and device images use `OTF_UNMANAGED_INSTALL=<dir>`; all options: [otfabric/install](https://github.com/otfabric/install#options). For offline machines, the archives and checksums are on [Releases](https://github.com/otfabric/bacnetctl/releases).
+
+From source (Go 1.26+): `go install github.com/otfabric/bacnetctl@latest`
 
 ---
 
@@ -58,13 +72,13 @@ It is built for commissioning and point-to-point checks, troubleshooting a devic
 - **Simulate a device** — `server run` serves a BACnet/IP device from a JSON device file or a built-in example, and prints every write, creation and deletion a client makes; optionally it is also the BBMD of the subnet. `server example` prints a device file to start from.
 - **Decode a capture** — `decode` takes the hex of a datagram and shows it layer by layer, offline.
 - **Script-friendly** — `--format text|json|table` on every command, a single JSON error object on failure (also for a mistyped flag), stable exit codes and `BACNETCTL_*` environment variables.
-- **Pre-built binaries** — Linux, macOS and Windows (x86-64 and ARM) from [GitHub Releases](https://github.com/otfabric/bacnetctl/releases), with SHA-256 checksums; no runtime to install.
+- **One-line install** — Linux, macOS and Windows (x86-64 and ARM), see [Install](#install); a single binary, no runtime to install.
 
 ---
 
 ## Quick start
 
-Download a binary from [GitHub Releases](https://github.com/otfabric/bacnetctl/releases) (see [Installation](#installation) for copy-paste commands for Linux, macOS and Windows, or build from source). Then, with `192.168.1.20` replaced by your device:
+Install bacnetctl (see [Install](#install)). Then, with `192.168.1.20` replaced by your device:
 
 ```console
 # Which devices are on this network?
@@ -115,11 +129,12 @@ An object is written **type:instance** (`analog-input:1`, or short `ai:1`), a pr
 
 ## Table of Contents
 
+- [Install](#install)
 - [Why bacnetctl?](#why-bacnetctl)
 - [Quick start](#quick-start)
 - [Use cases](#use-cases)
 - [Features](#features)
-- [Installation](#installation)
+- [Setup](#setup)
 - [BACnet in two minutes](#bacnet-in-two-minutes)
 - [Usage](#usage)
   - [General CLI usage](#general-cli-usage)
@@ -204,133 +219,7 @@ bacnetctl
 └── version              Print version
 ```
 
-## Installation
-
-The easiest way to install bacnetctl is to download a pre-built binary from the [GitHub Releases page](https://github.com/otfabric/bacnetctl/releases). No Go toolchain is required.
-
-| Platform | CPU | Download |
-|---|---|---|
-| Linux | x86-64 | `bacnetctl-<version>-linux-amd64.tar.gz` |
-| Linux | 64-bit ARM (Raspberry Pi 4/5 with a 64-bit OS, AWS Graviton) | `bacnetctl-<version>-linux-arm64.tar.gz` |
-| Linux | 32-bit ARM (Raspberry Pi with a 32-bit OS) | `bacnetctl-<version>-linux-armv7.tar.gz` |
-| macOS | Apple Silicon (M1 and later) | `bacnetctl-<version>-darwin-arm64.tar.gz` |
-| macOS | Intel | `bacnetctl-<version>-darwin-amd64.tar.gz` |
-| Windows | x86-64 | `bacnetctl-<version>-windows-amd64.zip` |
-| Windows | ARM64 | `bacnetctl-<version>-windows-arm64.zip` |
-
-Each release also contains `bacnetctl-<version>-checksums.txt` (SHA-256) so you can verify your download. The commands below fetch the **latest** release, verify its checksum and install it. Afterwards, check that it works:
-
-```console
-bacnetctl version
-```
-
-### Linux
-
-```bash
-# 1. Find the latest version and your CPU architecture
-VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/otfabric/bacnetctl/releases/latest | sed 's|.*/v||')
-case "$(uname -m)" in
-  x86_64)         ARCH=amd64 ;;
-  aarch64|arm64)  ARCH=arm64 ;;
-  armv7l)         ARCH=armv7 ;;
-  *) echo "Unsupported architecture: $(uname -m)" ;;
-esac
-
-# 2. Download the archive and the checksum file
-FILE="bacnetctl-${VERSION}-linux-${ARCH}.tar.gz"
-BASE="https://github.com/otfabric/bacnetctl/releases/download/v${VERSION}"
-curl -fsSLO "${BASE}/${FILE}"
-curl -fsSLO "${BASE}/bacnetctl-${VERSION}-checksums.txt"
-
-# 3. Verify the download (should print "OK")
-grep "${FILE}" "bacnetctl-${VERSION}-checksums.txt" | sha256sum -c -
-
-# 4. Extract and install (the binary in the archive carries the version and platform in its name)
-mkdir -p bacnetctl-dl && tar -xzf "${FILE}" -C bacnetctl-dl
-sudo install -m 0755 "$(find bacnetctl-dl -type f -name 'bacnetctl*' | head -n1)" /usr/local/bin/bacnetctl
-```
-
-No `sudo`? Install into your home directory instead (and make sure `~/.local/bin` is in your `PATH`):
-
-```bash
-mkdir -p ~/.local/bin
-install -m 0755 "$(find bacnetctl-dl -type f -name 'bacnetctl*' | head -n1)" ~/.local/bin/bacnetctl
-```
-
-### macOS
-
-```bash
-# 1. Find the latest version and your CPU architecture (arm64 = Apple Silicon, x86_64 = Intel)
-VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/otfabric/bacnetctl/releases/latest | sed 's|.*/v||')
-case "$(uname -m)" in
-  arm64)   ARCH=arm64 ;;
-  x86_64)  ARCH=amd64 ;;
-esac
-
-# 2. Download the archive and the checksum file
-FILE="bacnetctl-${VERSION}-darwin-${ARCH}.tar.gz"
-BASE="https://github.com/otfabric/bacnetctl/releases/download/v${VERSION}"
-curl -fsSLO "${BASE}/${FILE}"
-curl -fsSLO "${BASE}/bacnetctl-${VERSION}-checksums.txt"
-
-# 3. Verify the download (should print "OK")
-grep "${FILE}" "bacnetctl-${VERSION}-checksums.txt" | shasum -a 256 -c -
-
-# 4. Extract and install (the binary in the archive carries the version and platform in its name)
-mkdir -p bacnetctl-dl && tar -xzf "${FILE}" -C bacnetctl-dl
-sudo install -m 0755 "$(find bacnetctl-dl -type f -name 'bacnetctl*' | head -n1)" /usr/local/bin/bacnetctl
-```
-
-If you downloaded the archive with a web browser instead of `curl` and macOS refuses to run the binary ("cannot be verified"), remove the quarantine flag: `xattr -d com.apple.quarantine /usr/local/bin/bacnetctl`.
-
-### Windows (PowerShell)
-
-```powershell
-# 1. Find the latest version and your CPU architecture
-$version = (Invoke-RestMethod https://api.github.com/repos/otfabric/bacnetctl/releases/latest).tag_name.TrimStart('v')
-$arch    = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
-
-# 2. Download the archive and the checksum file
-$file = "bacnetctl-$version-windows-$arch.zip"
-$base = "https://github.com/otfabric/bacnetctl/releases/download/v$version"
-Invoke-WebRequest "$base/$file" -OutFile "$env:TEMP\$file"
-Invoke-WebRequest "$base/bacnetctl-$version-checksums.txt" -OutFile "$env:TEMP\bacnetctl-checksums.txt"
-
-# 3. Verify the download (throws an error on mismatch)
-$expected = ((Select-String -Path "$env:TEMP\bacnetctl-checksums.txt" -Pattern $file).Line -split '\s+')[0]
-$actual   = (Get-FileHash "$env:TEMP\$file" -Algorithm SHA256).Hash
-if ($expected -ne $actual) { throw "Checksum mismatch for $file" }
-
-# 4. Extract to a per-user folder and name the program bacnetctl.exe
-#    (the .exe in the archive carries the version and platform in its name)
-$dir = "$env:LOCALAPPDATA\Programs\bacnetctl"
-New-Item -ItemType Directory -Force -Path $dir | Out-Null
-Expand-Archive "$env:TEMP\$file" -DestinationPath "$env:TEMP\bacnetctl-dl" -Force
-$exe = Get-ChildItem "$env:TEMP\bacnetctl-dl" -Recurse -Filter 'bacnetctl*.exe' | Select-Object -First 1
-Copy-Item $exe.FullName "$dir\bacnetctl.exe" -Force
-
-# 5. Add bacnetctl to your user PATH (then open a new terminal)
-$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if ($userPath -notlike "*$dir*") {
-  [Environment]::SetEnvironmentVariable('Path', "$userPath;$dir", 'User')
-}
-```
-
-If Windows SmartScreen warns about an unrecognised app, choose **More info → Run anyway**.
-
-### Manual download
-
-1. Open the [latest release](https://github.com/otfabric/bacnetctl/releases/latest).
-2. Download the archive for your platform from the table above.
-3. Extract it, rename the binary to `bacnetctl` (`bacnetctl.exe` on Windows) and move it to a folder on your `PATH`.
-
-### Update
-
-Run the same commands again. They always fetch the latest release and overwrite the previous binary.
-
-### Uninstall
-
-bacnetctl is one file and keeps no configuration or state. Delete the binary: `sudo rm /usr/local/bin/bacnetctl` (or `rm ~/.local/bin/bacnetctl`) on Linux and macOS; on Windows remove the folder `%LOCALAPPDATA%\Programs\bacnetctl` and its entry in your user `PATH`.
+## Setup
 
 ### Shell completion
 
@@ -356,22 +245,6 @@ bacnetctl completion powershell | Out-String | Invoke-Expression
 ### Firewall and privileges
 
 bacnetctl needs no administrator rights: it opens an ordinary UDP socket. Commands that talk to one device use a free local port. `discover`, `whohas`, `router list` and `events` listen on UDP 47808, because devices answer broadcasts there: allow inbound UDP 47808 in the host firewall (Windows asks on first use), and stop other BACnet software on the same computer, which holds that port. See the [FAQ](#udp-port-47808-is-in-use-what-now).
-
-### Build from source
-
-Requires Go 1.26 or later:
-
-```console
-git clone https://github.com/otfabric/bacnetctl.git
-cd bacnetctl
-make build
-```
-
-`make build` runs the checks and writes the binary to **`bin/bacnetctl`** (see [Building](#building)). With a Go toolchain you can also install straight from the module:
-
-```console
-go install github.com/otfabric/bacnetctl@latest
-```
 
 ---
 
