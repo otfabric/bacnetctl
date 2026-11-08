@@ -1,5 +1,26 @@
 # bacnetctl Releases
 
+## v0.7.0
+
+**Date:** 2026-11-08
+**Previous release:** v0.6.0
+
+Requires **Go 1.26+**. Built on go-bacnet v0.8.0.
+
+### Summary
+
+go-bacnet v0.8.0, tested against three more independent stacks (ulbios/bacnet, legacy BACpypes 0.19.0 and @bacnet-js/client 3.3.2, bacnet-interop v0.14.0). It fixes a client defect that reaches the commands.
+
+### Fixed
+
+- **A segmented answer from a device whose segments are longer than the Max APDU bacnetctl advertises** was dropped and the command timed out (exit 4). Legacy BACpypes sends segments of 1481 octets to a client that accepts 1476. bacnetctl still advertises at most 1476 and now receives them.
+
+### Changed
+
+- go-bacnet v0.8.0.
+
+---
+
 ## v0.6.0
 
 **Date:** 2026-11-08
