@@ -380,12 +380,14 @@ func (m *model) readRange(req service.ReadRangeRequest) ([]byte, *bacErr, bool) 
 	if o == nil {
 		return nil, &errUnknownObject, false
 	}
-	if o.id.Type != bacnet.ObjectTypeTrendLog || req.Property.Identifier != bacnet.PropertyLogBuffer {
+	logs := o.id.Type == bacnet.ObjectTypeTrendLog || o.id.Type == bacnet.ObjectTypeTrendLogMultiple || o.id.Type == bacnet.ObjectTypeEventLog
+	if !logs || req.Property.Identifier != bacnet.PropertyLogBuffer {
 		return nil, &errNotATrend, false
 	}
 	// The simulated device returns at most three records per answer: enough to page.
 	const perAnswer = 3
-	first, count := 1, len(o.records)
+	n := len(o.records) + len(o.multi) + len(o.events)
+	first, count := 1, n
 	if req.By == service.ReadRangeByPosition {
 		first, count = int(req.ReferenceIndex), int(req.Count)
 	}
@@ -393,20 +395,26 @@ func (m *model) readRange(req service.ReadRangeRequest) ([]byte, *bacErr, bool) 
 		return nil, &bacErr{bacnet.ErrorClassServices, bacnet.ErrorCodeInconsistentParameters}, false
 	}
 	ack := service.ReadRangeACK{Object: o.id, Property: req.Property}
-	var records []service.LogRecord
-	if first <= len(o.records) {
-		end := min(first-1+min(count, perAnswer), len(o.records))
-		records = o.records[first-1 : end]
-		ack.ResultFlags = service.EncodeResultFlags(first == 1, end == len(o.records), end < len(o.records) && end-first+1 < count)
+	end := first - 1
+	if first <= n {
+		end = min(first-1+min(count, perAnswer), n)
+		ack.ResultFlags = service.EncodeResultFlags(first == 1, end == n, end < n && end-first+1 < count)
+		switch {
+		case o.multi != nil:
+			ack.LogMultipleRecords = o.multi[first-1 : end]
+		case o.events != nil:
+			ack.EventLogRecords = o.events[first-1 : end]
+		default:
+			ack.LogRecords = o.records[first-1 : end]
+		}
 	} else {
 		ack.ResultFlags = service.EncodeResultFlags(false, false, false)
 	}
-	n := len(records)
-	if int64(n) > math.MaxUint32 {
+	items := end - (first - 1)
+	if items < 0 || int64(items) > math.MaxUint32 {
 		return nil, nil, true
 	}
-	ack.ItemCount = uint32(n)
-	ack.LogRecords = records
+	ack.ItemCount = uint32(items)
 	reply, err := service.EncodeReadRangeACK(ack)
 	return reply, nil, err != nil
 }

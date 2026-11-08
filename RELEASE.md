@@ -1,5 +1,32 @@
 # bacnetctl Releases
 
+## v0.6.0
+
+**Date:** 2026-11-08
+**Previous release:** v0.5.0
+
+Requires **Go 1.26+**. Built on go-bacnet v0.7.0.
+
+### Summary
+
+`trend` reads trend log multiple and event log objects too: go-bacnet v0.7.0 decodes their Log_Buffer records, which it refused before (found in recorded traffic of a PolarSoft and an Automated Logic device).
+
+### Added
+
+- **`trend` on a trend log multiple:** each record holds one value per logged property (`kind` `"values"`, JSON `values`); a property the device could not read shows its error code. Status and time-change records as for a trend log.
+- **`trend` on an event log:** each record holds the event notification (`kind` `"event"`, JSON `event`: `event_object`, `event_type`, `from_state`, `to_state`, `notification_class`, `priority`, `message`); the table shows `out-of-range of analog-input:1: normal -> low-limit`.
+
+### Changed
+
+- go-bacnet v0.7.0. `server run` keeps acknowledging every ReinitializeDevice state and recording it: it installs the reinitialize hook, so go-bacnet's new refusal of backup states without a hook does not apply.
+- `trend` on an object whose answer holds no log records says "is OBJECT a trend log, trend log multiple or event log?".
+
+### Tests
+
+- The simulated device has a trend log multiple and an event log (`bactest.Logs()`) with the record forms of the recorded devices; `TestTrend` reads both, as table, text and JSON, one request and `--all`.
+
+---
+
 ## v0.5.0
 
 **Date:** 2026-11-07

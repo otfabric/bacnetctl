@@ -304,6 +304,26 @@ func TestTrend(t *testing.T) {
 	}
 	on(t, dev, "trend", "tl:1", "--start", "20").want(t, 0).has(t, "0 records from position 20")
 
+	// A trend log multiple and an event log: their own record types.
+	dev = bactest.Start(t, bactest.Logs())
+	on(t, dev, "trend", "trend-log-multiple:1").want(t, 0).has(t, "trend-log-multiple:1 at "+dev.Target()+": 3 records",
+		"values", "20.5, invalid-configuration-data (error class services)", "time-change")
+	var multi types.TrendResult
+	on(t, dev, "trend", "trend-log-multiple:1", "--all", "--format", "json").want(t, 0).decode(t, &multi)
+	if len(multi.Records) != 3 || multi.Records[1].Kind != "values" || len(multi.Records[1].Values) != 2 || multi.Records[1].Values[0].Value != 20.5 ||
+		multi.Records[0].Kind != "status" || multi.Records[2].Kind != "time-change" {
+		t.Fatalf("trend log multiple: %+v", multi.Records)
+	}
+	var events types.TrendResult
+	on(t, dev, "trend", "event-log:1", "--format", "json").want(t, 0).decode(t, &events)
+	ev := events.Records[1].Event
+	if len(events.Records) != 2 || events.Records[1].Kind != "event" || ev == nil || ev.EventObject != "analog-input:1" || ev.ToState != "low-limit" ||
+		ev.FromState != "normal" || ev.Priority != 100 || ev.Message != "LO1 Floating Limit" {
+		t.Fatalf("event log: %+v %+v", events.Records, ev)
+	}
+	on(t, dev, "trend", "event-log:1").want(t, 0).has(t, "out-of-range of analog-input:1: normal -> low-limit")
+	dev = bactest.Start(t)
+
 	on(t, dev, "trend", "ai:1").want(t, 6).errHas(t, "property-is-not-a-list")
 	on(t, dev, "trend", "tl:9").want(t, 6).errHas(t, "unknown-object")
 	on(t, dev, "trend", "tl:1", "--start", "0").want(t, 3)
