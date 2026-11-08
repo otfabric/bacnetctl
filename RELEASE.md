@@ -16,9 +16,13 @@ Requires **Go 1.26+**. Built on go-bacnet v0.7.0.
 - **`trend` on a trend log multiple:** each record holds one value per logged property (`kind` `"values"`, JSON `values`); a property the device could not read shows its error code. Status and time-change records as for a trend log.
 - **`trend` on an event log:** each record holds the event notification (`kind` `"event"`, JSON `event`: `event_object`, `event_type`, `from_state`, `to_state`, `notification_class`, `priority`, `message`); the table shows `out-of-range of analog-input:1: normal -> low-limit`.
 
+### Fixed
+
+- **`server run` acknowledged ReinitializeDevice START_BACKUP, END_BACKUP, START_RESTORE, END_RESTORE and ABORT_RESTORE** although the simulated device has no backup or restore procedure. It now refuses them with services/service-request-denied, as go-bacnet v0.7.0's server does without a hook and as recorded devices without backup support do (a WattStopper LMBC-300, go-bacnet testdata/captures). The record says `status` `"refused"`. COLDSTART, WARMSTART and ACTIVATE_CHANGES are acknowledged and recorded (`"allowed"`) as before.
+
 ### Changed
 
-- go-bacnet v0.7.0. `server run` keeps acknowledging every ReinitializeDevice state and recording it: it installs the reinitialize hook, so go-bacnet's new refusal of backup states without a hook does not apply.
+- go-bacnet v0.7.0.
 - `trend` on an object whose answer holds no log records says "is OBJECT a trend log, trend log multiple or event log?".
 
 ### Tests

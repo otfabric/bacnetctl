@@ -32,6 +32,7 @@ func TestServerRecordText(t *testing.T) {
 		{"create", ServerRecord{Event: ServerCreate, ObjectRef: av1}, []string{"create", "analog-value,1"}, nil},
 		{"delete", ServerRecord{Event: ServerDelete, ObjectRef: av1, Status: ServerAllowed}, []string{"delete", "allowed"}, nil},
 		{"reinitialize", ServerRecord{Event: ServerReinitialize, State: "warmstart"}, []string{"warmstart"}, nil},
+		{"reinitialize refused", ServerRecord{Event: ServerReinitialize, State: "start-backup", Status: ServerRefused}, []string{"start-backup", "refused"}, nil},
 		{"time-sync utc", ServerRecord{Event: ServerTimeSync, Time: "2026-11-06T10:00:00", UTC: &yes}, []string{"2026-11-06T10:00:00 UTC"}, nil},
 		{"time-sync local", ServerRecord{Event: ServerTimeSync, Time: "2026-11-06T10:00:00", UTC: &no}, []string{"2026-11-06T10:00:00"}, []string{"UTC"}},
 		{"time-sync unset", ServerRecord{Event: ServerTimeSync, Time: "t"}, []string{"t"}, []string{"UTC"}},
