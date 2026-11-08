@@ -146,8 +146,29 @@ func TestServe(t *testing.T) {
 	if err := c.ReinitializeDevice(ctx, s.target, service.ReinitializeDeviceRequest{State: service.ReinitializedWarmstart, Password: &pw}); err != nil {
 		t.Fatal(err)
 	}
-	if r := s.next(t); r.Event != types.ServerReinitialize || r.State != "warmstart" {
+	if r := s.next(t); r.Event != types.ServerReinitialize || r.State != "warmstart" || r.Status != types.ServerAllowed {
 		t.Errorf("reinitialize record: %+v", r)
+	}
+	// No backup or restore procedure: those states are refused, as go-bacnet's
+	// server and recorded devices without backup support refuse them.
+	for _, st := range []service.ReinitializedStateOfDevice{service.ReinitializedStartBackup, service.ReinitializedEndBackup,
+		service.ReinitializedStartRestore, service.ReinitializedEndRestore, service.ReinitializedAbortRestore} {
+		var er *bacnet.ErrorResponse
+		err := c.ReinitializeDevice(ctx, s.target, service.ReinitializeDeviceRequest{State: st, Password: &pw})
+		if !errors.As(err, &er) || er.Class != uint16(bacnet.ErrorClassServices) || er.Code != uint16(bacnet.ErrorCodeServiceRequestDenied) {
+			t.Fatalf("state %d: %v", st, err)
+		}
+		if r := s.next(t); r.Event != types.ServerReinitialize || r.State != reinitStateName(st) || r.Status != types.ServerRefused {
+			t.Errorf("refused reinitialize record: %+v", r)
+		}
+	}
+	for _, st := range []service.ReinitializedStateOfDevice{service.ReinitializedColdstart, service.ReinitializedActivateChanges} {
+		if err := c.ReinitializeDevice(ctx, s.target, service.ReinitializeDeviceRequest{State: st, Password: &pw}); err != nil {
+			t.Fatalf("state %d: %v", st, err)
+		}
+		if r := s.next(t); r.State != reinitStateName(st) || r.Status != types.ServerAllowed {
+			t.Errorf("reinitialize record: %+v", r)
+		}
 	}
 	now := time.Now()
 	d, tm := DateTimeOf(now)
@@ -159,7 +180,7 @@ func TestServe(t *testing.T) {
 	}
 
 	s.stop(t)
-	if s.err != nil || s.summary.Records != 6 || s.summary.Device != "device:1234" || !strings.HasPrefix(s.summary.Address, "127.0.0.1:") {
+	if s.err != nil || s.summary.Records != 13 || s.summary.Device != "device:1234" || !strings.HasPrefix(s.summary.Address, "127.0.0.1:") {
 		t.Errorf("summary: %+v %v", s.summary, s.err)
 	}
 }

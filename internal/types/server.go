@@ -18,7 +18,7 @@ const (
 	ServerTimeSync     = "time-sync"
 )
 
-// Statuses of a write or delete request in a ServerRecord.
+// Statuses of a write, delete or reinitialize request in a ServerRecord.
 const (
 	ServerAllowed = "allowed"
 	ServerRefused = "refused"
@@ -89,6 +89,9 @@ func (r *ServerRecord) detail() string {
 		parts = append(parts, r.Status)
 	case ServerReinitialize:
 		parts = append(parts, r.State)
+		if r.Status != "" {
+			parts = append(parts, r.Status)
+		}
 	case ServerTimeSync:
 		utc := r.UTC != nil && *r.UTC
 		if utc {

@@ -94,6 +94,9 @@ type object struct {
 	state  uint32
 	// records is the buffer of a trend log, content the content of a file.
 	records []service.LogRecord
+	// multi and events are the buffers of a trend log multiple and an event log.
+	multi   []service.LogMultipleRecord
+	events  []service.EventLogRecord
 	content []byte
 	// dynamic objects were made with CreateObject, and only they can be deleted.
 	dynamic bool
@@ -640,4 +643,41 @@ func (m *model) delete(id bacnet.ObjectIdentifier) *bacErr {
 	}
 	m.remove(o.id)
 	return nil
+}
+
+// addLogs adds a trend log multiple of two properties and an event log, with
+// the record forms PolarSoft and Automated Logic devices send (recorded in
+// go-bacnet's testdata/captures).
+func (m *model) addLogs() {
+	tlm := m.add(bacnet.ObjectTypeTrendLogMultiple, 1, "AHU-1 Log",
+		req(propRecordCount, bacnet.UnsignedValue(0)),
+		&prop{id: bacnet.PropertyLogBuffer, required: true},
+	)
+	failure := bacnet.ApplicationValue{Kind: bacnet.ValueConstructed, Elements: []bacnet.Element{
+		{Value: bacnet.EnumValue(uint32(bacnet.ErrorClassServices))}, {Value: bacnet.EnumValue(46)},
+	}}
+	tlm.multi = []service.LogMultipleRecord{
+		{Timestamp: dateTime(10, 10, 0), Choice: service.LogDataLogStatus, LogStatus: bitSet(3, 1).BitString},
+		{Timestamp: dateTime(10, 10, 15), Choice: service.LogDataValues, Values: []service.LogMultipleValue{
+			{Choice: service.LogDatumReal, Value: bacnet.RealValue(20.5)}, {Choice: service.LogDatumFailure, Value: failure},
+		}},
+		{Timestamp: dateTime(10, 10, 30), Choice: service.LogDataTimeChange, TimeChange: 60},
+	}
+	tlm.set(propRecordCount, bacnet.UnsignedValue(uint64(len(tlm.multi))))
+	from := uint32(0)
+	el := m.add(bacnet.ObjectTypeEventLog, 1, "Alarm Log",
+		req(propRecordCount, bacnet.UnsignedValue(2)),
+		&prop{id: bacnet.PropertyLogBuffer, required: true},
+	)
+	el.events = []service.EventLogRecord{
+		{Timestamp: dateTime(10, 9, 0), Choice: service.LogDataLogStatus, LogStatus: bitSet(3, 1).BitString},
+		{Timestamp: dateTime(10, 9, 15), Choice: service.LogDataValues, Notification: &service.EventNotification{
+			ProcessIdentifier: 100, InitiatingDevice: bacnet.ObjectIdentifier{Type: bacnet.ObjectTypeDevice, Instance: 1},
+			EventObject:       bacnet.ObjectIdentifier{Type: bacnet.ObjectTypeAnalogInput, Instance: 1},
+			TimeStamp:         service.TimeStamp{Choice: service.TimeStampSequence, Sequence: 4},
+			NotificationClass: 1, Priority: 100, EventType: 5, NotifyType: 0, FromState: &from, ToState: 4,
+			MessageText: &bacnet.CharacterString{Value: "LO1 Floating Limit"},
+		}},
+	}
+
 }

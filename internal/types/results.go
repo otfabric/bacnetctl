@@ -847,9 +847,44 @@ type LogRecord struct {
 	Timestamp string `json:"timestamp"`
 	// Kind is "value", "status" (a change of the log status), "failure" (the logged
 	// property could not be read) or "time-change".
-	Kind        string   `json:"kind"`
-	Value       *Value   `json:"value,omitempty"`
-	StatusFlags []string `json:"status_flags,omitempty"`
+	Kind  string `json:"kind"`
+	Value *Value `json:"value,omitempty"`
+	// Values are the values of a trend log multiple record ("values"), one per
+	// logged property.
+	Values []Value `json:"values,omitempty"`
+	// Event is the event notification of an event log record ("event").
+	Event       *LogEvent `json:"event,omitempty"`
+	StatusFlags []string  `json:"status_flags,omitempty"`
+}
+
+// LogEvent is the event notification an event log recorded.
+type LogEvent struct {
+	EventObject       string `json:"event_object"`
+	EventType         string `json:"event_type"`
+	FromState         string `json:"from_state,omitempty"`
+	ToState           string `json:"to_state"`
+	NotificationClass uint32 `json:"notification_class"`
+	Priority          uint8  `json:"priority"`
+	Message           string `json:"message,omitempty"`
+}
+
+// recordText is what the VALUE column shows for a log record.
+func recordText(r LogRecord) string {
+	switch {
+	case r.Event != nil:
+		s := r.Event.EventType + " of " + r.Event.EventObject + ": "
+		if r.Event.FromState != "" {
+			s += r.Event.FromState + " -> "
+		}
+		return s + r.Event.ToState
+	case r.Values != nil:
+		parts := make([]string, 0, len(r.Values))
+		for i := range r.Values {
+			parts = append(parts, TextOf(&r.Values[i]))
+		}
+		return strings.Join(parts, ", ")
+	}
+	return TextOf(r.Value)
 }
 
 // MarshalJSON implements json.Marshaler. The status flags of a record that carries them
@@ -887,7 +922,7 @@ func (r *TrendResult) TableHeaders() []string {
 func (r *TrendResult) TableRows() [][]string {
 	rows := make([][]string, 0, len(r.Records))
 	for _, rec := range r.Records {
-		rows = append(rows, []string{strconv.FormatUint(uint64(rec.Position), 10), rec.Timestamp, rec.Kind, TextOf(rec.Value), flagsText(rec.StatusFlags)})
+		rows = append(rows, []string{strconv.FormatUint(uint64(rec.Position), 10), rec.Timestamp, rec.Kind, recordText(rec), flagsText(rec.StatusFlags)})
 	}
 	return rows
 }

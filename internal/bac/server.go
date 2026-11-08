@@ -325,7 +325,14 @@ func serverHooks(q *recordQueue, readOnly bool) server.Hooks {
 			return nil
 		},
 		Reinitialize: func(_ context.Context, state service.ReinitializedStateOfDevice) error {
-			q.push(&types.ServerRecord{Event: types.ServerReinitialize, State: reinitStateName(state)})
+			// The simulated device has no backup or restore procedure (clause 19.1):
+			// it refuses those states as go-bacnet's server does without a hook,
+			// and as recorded devices without backup support do.
+			if state >= service.ReinitializedStartBackup && state <= service.ReinitializedAbortRestore {
+				q.push(&types.ServerRecord{Event: types.ServerReinitialize, State: reinitStateName(state), Status: types.ServerRefused})
+				return object.Err(bacnet.ErrorClassServices, bacnet.ErrorCodeServiceRequestDenied)
+			}
+			q.push(&types.ServerRecord{Event: types.ServerReinitialize, State: reinitStateName(state), Status: types.ServerAllowed})
 			return nil
 		},
 		TimeSync: func(t service.TimeSynchronization, utc bool) {

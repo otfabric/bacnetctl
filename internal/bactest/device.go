@@ -80,6 +80,9 @@ var confirmedNames = map[uint8]string{
 // Option changes how the simulated device behaves.
 type Option func(*Device)
 
+// Logs adds trend-log-multiple:1 and event-log:1 to the device.
+func Logs() Option { return func(d *Device) { d.local.addLogs() } }
+
 // Silent makes the device answer nothing at all, as an address without a device.
 func Silent() Option { return func(d *Device) { d.silent = true } }
 

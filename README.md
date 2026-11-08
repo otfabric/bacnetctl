@@ -193,7 +193,7 @@ bacnetctl
 ├── objects              List the objects of a device, with values
 ├── describe             Show every property of one object
 ├── device               Show what a device says about itself
-├── trend                Read the records of a trend log (ReadRange)
+├── trend                Read the records of a trend log, trend log multiple or event log (ReadRange)
 ├── file
 │   ├── get              Read a file object into a local file
 │   └── put              Write a local file into a file object

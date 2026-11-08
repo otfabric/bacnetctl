@@ -17,11 +17,13 @@ import (
 func newTrendCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trend OBJECT",
-		Short: "Read the records of a trend log (ReadRange)",
+		Short: "Read the records of a trend log, trend log multiple or event log (ReadRange)",
 		Long: `Read records from the log buffer of a trend log object and print each with its
 position, the time the device logged it, and its value and status flags. A record can
 also be a change of the log status, a failure to read the logged property, or a change
-of the device's clock.
+of the device's clock. A trend log multiple logs several properties: each of its
+records holds one value per property ("values"). An event log records event
+notifications ("event": the event, its object and the transition).
 
 Records are read by position: --start is the first record (1 is the oldest in the
 buffer), --count how many. A device returns what fits one answer, which can be fewer than
@@ -40,6 +42,10 @@ Time stamps are the device's own local time, as it logged them.
 
   # The whole buffer, as JSON
   bacnetctl trend --device 192.168.1.20 trend-log:1 --all --format json > trend.json
+
+  # A trend log multiple and an event log
+  bacnetctl trend --device 192.168.1.20 trend-log-multiple:1
+  bacnetctl trend --device 192.168.1.20 event-log:1
 `,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: objectArgs,
