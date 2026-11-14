@@ -1,5 +1,30 @@
 # bacnetctl Releases
 
+## v0.8.0
+
+**Date:** 2026-11-14
+**Previous release:** v0.7.0
+
+Requires **Go 1.26+**. Built on go-bacnet v0.9.0.
+
+### Summary
+
+go-bacnet v0.9.0, which tightens what a peer can make the client and the server build, keep or send. The changes reach `read`, `objects`, `trend` and `serve`.
+
+### Changed
+
+- go-bacnet v0.9.0.
+- **`read`**: a device whose ReadPropertyMultiple answer carries properties other than the requested ones, in another order, or more or fewer of them, now fails the read (`ErrProtocolViolation`) instead of showing what it sent. A read of `all`, `required` or `optional` is unchanged.
+- **`objects`**: never lists more objects than its limit, also when the device answers element by element.
+- **`trend`**: the record limit counts the records kept from each page, not the count the device reports.
+- **`serve`**:
+  - writes through AtomicWriteFile, and writes a Schedule makes to the objects it references, now appear as `write` records (and are refused with `--read-only`);
+  - datagrams from a non-IPv4 node are discarded;
+  - segmented requests and replies, and COV references, are bounded (go-bacnet defaults);
+  - as BBMD, a Forwarded-NPDU is passed on only when it comes from a BDT peer.
+
+---
+
 ## v0.7.0
 
 **Date:** 2026-11-08
