@@ -1,5 +1,21 @@
 # bacnetctl Releases
 
+## v0.8.1
+
+**Date:** 2026-11-15
+**Previous release:** v0.8.0
+
+No command or flag is added or changed.
+
+### Changed
+
+- Built on go-bacnet v0.9.1 (was v0.9.0) (go-bacnet RELEASE.md, v0.9.1). For the tool this means:
+  - An answer with a missing, repeated or contradicting field that could only be misread is refused with a malformed-message error; a file read no longer reports a truncated file as complete.
+  - The `any-value` alternative of a Trend Log Multiple record is shown as the value it holds.
+  - The simulated device keeps at most 1 MiB of record data in one File object, answers an acknowledgement that changes nothing without sending it on, and answers a request with an Abort when its own code does not return normally.
+
+---
+
 ## v0.8.0
 
 **Date:** 2026-11-14
