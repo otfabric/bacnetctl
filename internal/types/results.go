@@ -168,7 +168,7 @@ func (r *DiscoverResult) TableRows() [][]string {
 			if d.Error != nil {
 				name = ErrorText(d.Error)
 			}
-			row = append(row, dash(name), dash(d.VendorName), dash(d.ModelName))
+			row = append(row, dash(TerminalSafe(name)), dash(TerminalSafe(d.VendorName)), dash(TerminalSafe(d.ModelName)))
 		}
 		rows = append(rows, row)
 	}
@@ -216,7 +216,7 @@ func (r *WhoHasResult) TableHeaders() []string {
 func (r *WhoHasResult) TableRows() [][]string {
 	rows := make([][]string, 0, len(r.Objects))
 	for _, o := range r.Objects {
-		rows = append(rows, []string{strconv.FormatUint(uint64(o.Device), 10), o.Address, dash(optUint(o.Network)), dash(o.MAC), o.Object, o.Name})
+		rows = append(rows, []string{strconv.FormatUint(uint64(o.Device), 10), o.Address, dash(optUint(o.Network)), dash(o.MAC), o.Object, TerminalSafe(o.Name)})
 	}
 	return rows
 }
@@ -478,13 +478,13 @@ func (r *ObjectsResult) TableHeaders() []string {
 func (r *ObjectsResult) TableRows() [][]string {
 	rows := make([][]string, 0, len(r.Objects))
 	for _, o := range r.Objects {
-		name := dash(o.Name)
+		name := dash(TerminalSafe(o.Name))
 		if o.Error != nil {
 			name = ErrorText(o.Error)
 		}
 		row := []string{o.Object, name}
 		if r.Values {
-			row = append(row, TextOf(o.PresentValue), flagsText(o.StatusFlags), dash(o.Description))
+			row = append(row, TextOf(o.PresentValue), flagsText(o.StatusFlags), dash(TerminalSafe(o.Description)))
 		}
 		rows = append(rows, row)
 	}
@@ -575,15 +575,15 @@ func (r *DeviceResult) pairs() []string {
 	return []string{
 		"Device", r.Object,
 		"Address", r.Target,
-		"Name", r.Name,
-		"Description", r.Description,
-		"Location", r.Location,
-		"Vendor", r.VendorName,
+		"Name", TerminalSafe(r.Name),
+		"Description", TerminalSafe(r.Description),
+		"Location", TerminalSafe(r.Location),
+		"Vendor", TerminalSafe(r.VendorName),
 		"Vendor ID", optUint(r.VendorID),
-		"Model", r.ModelName,
-		"Serial number", r.SerialNumber,
-		"Firmware", r.FirmwareRevision,
-		"Application software", r.ApplicationVersion,
+		"Model", TerminalSafe(r.ModelName),
+		"Serial number", TerminalSafe(r.SerialNumber),
+		"Firmware", TerminalSafe(r.FirmwareRevision),
+		"Application software", TerminalSafe(r.ApplicationVersion),
 		"System status", enum(r.SystemStatus, r.SystemStatusID),
 		"Protocol version", optUint(r.ProtocolVersion),
 		"Protocol revision", optUint(r.ProtocolRevision),
@@ -821,7 +821,7 @@ func (r *EventRecord) transition() string {
 // TableRows implements format.TableMarshaler.
 func (r *EventRecord) TableRows() [][]string {
 	return [][]string{{clock(r.Timestamp), fmt.Sprintf("%-14s", r.Device), fmt.Sprintf("%-18s", r.Object),
-		fmt.Sprintf("%-16s", r.EventType), fmt.Sprintf("%-22s", r.transition()), strconv.Itoa(int(r.Priority)), dash(r.Message)}}
+		fmt.Sprintf("%-16s", r.EventType), fmt.Sprintf("%-22s", r.transition()), strconv.Itoa(int(r.Priority)), dash(TerminalSafe(r.Message))}}
 }
 
 // MarshalTextOutput implements format.TextMarshaler.
@@ -1160,7 +1160,7 @@ func (r *DecodeResult) TableRows() [][]string {
 	for _, l := range r.Layers {
 		rows = append(rows, []string{l.Layer, "", l.Summary})
 		for _, f := range l.Fields {
-			rows = append(rows, []string{"", f.Name, fmt.Sprint(f.Value)})
+			rows = append(rows, []string{"", f.Name, TerminalSafe(fmt.Sprint(f.Value))})
 		}
 	}
 	if r.Error != "" {
@@ -1179,7 +1179,7 @@ func (r *DecodeResult) MarshalTextOutput() (string, error) {
 			width = max(width, len(f.Name))
 		}
 		for _, f := range l.Fields {
-			_, _ = fmt.Fprintf(&b, "  %-*s  %v\n", width, f.Name, f.Value)
+			_, _ = fmt.Fprintf(&b, "  %-*s  %s\n", width, f.Name, TerminalSafe(fmt.Sprint(f.Value)))
 		}
 	}
 	if r.Error != "" {

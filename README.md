@@ -298,6 +298,8 @@ Every command has `--help`, with a description and examples.
 
 **Output format (`--format`):** every command that prints a result accepts **`--format text`** (default), **`json`** or **`table`**, or set **`BACNETCTL_FORMAT`**. It controls **only** the result on **stdout**. Progress, summaries and diagnostics go to **stderr**, so stdout can be piped or parsed as it is. The JSON shapes are a stable contract: see [docs/json-output.md](docs/json-output.md).
 
+**Strings from a device:** in **text** and **table** output, the characters of a device's strings (names, descriptions, character string values, event messages) that would act on a terminal instead of being shown are written as escapes: the control characters (`\n`, `\r`, `\t`, `\x1b`, …, `\u0080` to `\u009f`) and the bidirectional controls (`\u202a` to `\u202e`, `\u2066` to `\u2069`); an octet that is not UTF-8 is written `\xNN`. Every other character is shown as it is. **json** keeps the strings as the device sent them.
+
 **Streams:** `monitor`, `events` and `server run` write one record as it happens: one line (**text**), one JSON object per line (**json**, JSON Lines) or table rows (**table**). They run until interrupted with Ctrl-C, which ends them normally.
 
 **Fatal errors:** with `--format json` a command writes a **single JSON error object** to stdout on failure (fields `kind`, `code`, `message`, and `bacnet` with what the device answered); with **text** or **table** it writes a single **`error:`** line to stderr and leaves stdout empty. That holds for every failure, including the ones before a command runs: an unknown flag or command, a missing argument, a malformed environment variable. Exit codes are stable:
@@ -376,6 +378,8 @@ INSTANCE  ADDRESS          NETWORK  MAC  VENDOR  MAX APDU  SEGMENTATION     NAME
 ```
 
 The second device is behind a router: `ADDRESS` is the router, `NETWORK` and `MAC` are the device. (`--local-port 0` is used here because the simulated device answers to the address that asked; a real device usually answers by broadcast, which needs the default port 47808.) `--wait` is how long answers are collected (3000 ms by default). A network without devices is not an error: the result is empty and the exit code 0.
+
+With `--target`, only the answers that come from that address are listed: the device there, and the devices behind it when it is a router, so `ADDRESS` is always the target. A device elsewhere that answers by broadcast at the same time is left out, and a target that does not answer gives the empty result and exit code 0. `--target` is one device or router: to ask every device of a local subnet, broadcast (`--interface` picks the subnet); for another subnet, register with a BBMD there (`--bbmd`). The same holds for `whohas` and `router list`.
 
 `whohas` asks for an object instead of a device:
 
@@ -575,6 +579,17 @@ bacnetctl write --device 192.168.1.20 av:7 present-value -- -5
 
 Without a type, bacnetctl reads the property first and writes the value with the type it holds now; that cannot work for a property that holds NULL or a list. `--type` names the type for a value without prefix and skips the read.
 
+**How numbers are read.** Write whole numbers in decimal without a leading zero: `10` is ten in every flag, environment variable and value. Other spellings are not read the same everywhere:
+
+| Written | A numeric flag (`--priority`, `--wait`, `router list --network`, …) | Its environment variable (`BACNETCTL_PRIORITY`, …) | `unsigned:`, `signed:`, and `--network` of `discover` and `whohas` | `enum:` |
+|---|---|---|---|---|
+| `010` | 8 (octal) | 10 | 8 (octal) | 10 |
+| `08` | refused (exit code 2) | 8 | refused (exit code 3) | 8 |
+| `0x10` | 16 | refused (exit code 3) | 16 | refused (exit code 3) |
+| `0o10`, `0b10` | 8, 2 | refused (exit code 3) | 8, 2 | refused (exit code 3) |
+
+So `--priority 010` writes at priority 8 and `BACNETCTL_PRIORITY=010` at priority 10. Remove the leading zeros of numbers that come from zero-padded data before they reach bacnetctl.
+
 ```console
 $ bacnetctl write --device 127.0.0.1:47809 analog-value:1 present-value 22.5 --priority 8
 analog-value:1 present-value = 22.5 at priority 8 (acknowledged by the device)
@@ -714,7 +729,7 @@ bacnetctl file get --device 192.168.1.20 file:2 --output - | less
 bacnetctl file put --device 192.168.1.20 file:1 --input config.bin
 ```
 
-The result names the length and the SHA-256 of the content. A new `--output` file is created readable by its owner only (mode 0600), because a file object can hold a device configuration; an existing file keeps its mode. `--chunk` is the number of octets per request (256 by default): lower it for a device with a small APDU, raise it for speed.
+The result names the length and the SHA-256 of the content. A new `--output` file is created readable by its owner only (mode 0600), because a file object can hold a device configuration; an existing file keeps its mode. `--chunk` is the number of octets per request (256 by default): lower it for a device with a small APDU, raise it for speed. `file get` reads at most `--max-size` octets (16 MiB by default, up to 4294967295) and writes nothing when the file is larger (exit code 3); the limit holds the same on 32-bit platforms.
 
 #### Time synchronization
 
@@ -743,7 +758,7 @@ device:2001010  object-name  Zone Controller 10
 device:2001010  model-name   bacsim
 ```
 
-`router list` without `--target` asks by broadcast. `bbmd bdt` and `bbmd fdt` read the broadcast distribution table and the foreign device table of the BBMD at `--device`.
+`router list` without `--target` asks by broadcast; with `--target` it lists only the networks that router announces. `bbmd bdt` and `bbmd fdt` read the broadcast distribution table and the foreign device table of the BBMD at `--device`.
 
 #### Restart or silence a device
 
@@ -755,7 +770,12 @@ bacnetctl comm-control disable --duration 10 --device 192.168.1.20 --yes-i-am-su
 bacnetctl comm-control enable --device 192.168.1.20 --yes-i-am-sure
 ```
 
-A device may ask for a password: `--password`, or the environment variable `BACNETCTL_PASSWORD`, which keeps it out of the shell history. BACnet sends the password in clear text. bacnetctl never prints it.
+A device may ask for a password. Give it in a file, `--password-file FILE` (`-` reads it from stdin), or in the environment variable `BACNETCTL_PASSWORD_FILE` (the file) or `BACNETCTL_PASSWORD` (the password itself): these keep it out of the shell history and the process list. One line break at the end of the file is not part of the password, and a file of more than 4096 octets is refused. `--password` still works, but is deprecated: the password is then on the command line, and bacnetctl says so on stderr. Give one of the two flags, or set one of the two variables; a flag wins over the variables. BACnet sends the password in clear text. bacnetctl never prints it.
+
+```console
+bacnetctl reinitialize warmstart --device 192.168.1.20 --yes-i-am-sure --password-file ~/.bacnet-password
+pass show bacnet/ahu-1 | bacnetctl comm-control enable --device 192.168.1.20 --yes-i-am-sure --password-file -
+```
 
 #### Serve a simulated device
 
@@ -791,7 +811,8 @@ bacnetctl server example > device.json
 | `--max-apdu` | `BACNETCTL_SERVER_MAX_APDU` | Largest APDU accepted, 50-1476 (default 1476) |
 | `--max-segments` | `BACNETCTL_SERVER_MAX_SEGMENTS` | Segments accepted per message, 2-255 (default 64; 0 = no segmentation) |
 | `--read-only` | `BACNETCTL_SERVER_READ_ONLY` | Refuse every write (write-access-denied) and delete (object-deletion-not-permitted) |
-| `--password` | `BACNETCTL_SERVER_PASSWORD` | Password that DeviceCommunicationControl and ReinitializeDevice must carry, at most 20 octets. Never printed. Not `BACNETCTL_PASSWORD`, which is what the client commands send |
+| `--password-file` | `BACNETCTL_SERVER_PASSWORD_FILE` | File that holds the password DeviceCommunicationControl and ReinitializeDevice must carry, at most 20 octets (`-` = stdin; one line break at the end is not part of it). Never printed. Not `BACNETCTL_PASSWORD_FILE`, which is what the client commands send |
+| `--password` | `BACNETCTL_SERVER_PASSWORD` | The password itself. `--password` is deprecated (it puts the password on the command line); the variable is not. One flag or one variable, not both |
 | `--bbmd` | `BACNETCTL_SERVER_BBMD` | Also be a BBMD on the same address: forward broadcasts and accept foreign devices |
 | `--bdt` | `BACNETCTL_SERVER_BDT` | Peer BBMDs, `host[:port][/mask]` (mask 255.255.255.255 unless given); the BBMD itself is added |
 | `--bbmd-address` | `BACNETCTL_SERVER_BBMD_ADDRESS` | The BBMD's own address (default: `--listen`, or the IPv4 address of `--interface`) |
@@ -842,7 +863,7 @@ The hex is the UDP payload, as copied from a packet capture; spaces, colons and 
 
 ## Environment Variable Configuration
 
-Every flag that is part of a command's configuration can also be set through an environment variable, which is convenient for automation and for flags you would otherwise repeat on every command (`BACNETCTL_DEVICE`, `BACNETCTL_FORMAT`). A flag on the command line wins over the environment. A value that cannot be parsed (a port that is not a number) stops bacnetctl at startup. The global flag `--debug` and the confirmation `--yes-i-am-sure` have no environment variable.
+Every flag that is part of a command's configuration can also be set through an environment variable, which is convenient for automation and for flags you would otherwise repeat on every command (`BACNETCTL_DEVICE`, `BACNETCTL_FORMAT`). A flag on the command line wins over the environment. A value that cannot be parsed (a port that is not a number) stops bacnetctl at startup. A number in a variable is decimal, also with a leading zero (`BACNETCTL_PRIORITY=010` is ten), and a `0x` prefix is refused; a numeric flag reads `010` as octal and `0x10` as hex (see **How numbers are read** under [Write a property](#write-a-property)). The global flag `--debug` and the confirmation `--yes-i-am-sure` have no environment variable.
 
 ```console
 export BACNETCTL_DEVICE=192.168.1.20
@@ -886,7 +907,8 @@ bacnetctl read analog-input:1 present-value
 | **BACNETCTL_OBJECT** | string | **`whohas`**: object identifier to look for | `--object` | |
 | **BACNETCTL_OUTPUT** | string | **`file get`**: file to write (`-` = stdout) | `--output` | |
 | **BACNETCTL_FORMAT** | string | (`BACNETCTL_OUTPUT_FORMAT` stays accepted) Output format: text, json or table | `--format` | text |
-| **BACNETCTL_PASSWORD** | string | **`reinitialize`**, **`comm-control`**: password of the device. Read when the command runs; never shown in `--help` or in output | `--password` | |
+| **BACNETCTL_PASSWORD** | string | **`reinitialize`**, **`comm-control`**: password of the device. Read when the command runs; never shown in `--help` or in output | `--password` (deprecated) | |
+| **BACNETCTL_PASSWORD_FILE** | string | **`reinitialize`**, **`comm-control`**: file that holds the password of the device (`-` = stdin), without the line break at its end; at most 4096 octets. Not together with `BACNETCTL_PASSWORD` | `--password-file` | |
 | **BACNETCTL_POLL** | uint32 | **`monitor`**: poll every this many ms instead of subscribing (0 = subscribe) | `--poll` | 0 |
 | **BACNETCTL_PRIORITY** | uint8 | **`write`**: command priority 1-16 (0 = none); **`release`**: the priority to relinquish | `--priority` | 0 |
 | **BACNETCTL_PROCESS_ID** | uint32 | **`ack`**: acknowledging process identifier | `--process-id` | 0 |
@@ -903,7 +925,8 @@ bacnetctl read analog-input:1 present-value
 | **BACNETCTL_SERVER_MAX_SEGMENTS** | uint8 | **`server run`**: segments accepted (0 = no segmentation) | `--max-segments` | 64 |
 | **BACNETCTL_SERVER_NAME** | string | **`server run`**: device name | `--name` | from the device file |
 | **BACNETCTL_SERVER_NO_FOREIGN** | bool | **`server run`**: refuse foreign device registrations | `--no-foreign-devices` | false |
-| **BACNETCTL_SERVER_PASSWORD** | string | **`server run`**: password device management must carry. Read when the command runs; never shown in `--help` or in output | `--password` | |
+| **BACNETCTL_SERVER_PASSWORD** | string | **`server run`**: password device management must carry. Read when the command runs; never shown in `--help` or in output | `--password` (deprecated) | |
+| **BACNETCTL_SERVER_PASSWORD_FILE** | string | **`server run`**: file that holds that password (`-` = stdin), without the line break at its end. Not together with `BACNETCTL_SERVER_PASSWORD` | `--password-file` | |
 | **BACNETCTL_SERVER_PORT** | string | **`server run`**: UDP port (0 = a free port) | `--port` | from the device file, or 47808 |
 | **BACNETCTL_SERVER_READ_ONLY** | bool | **`server run`**: refuse every write and delete | `--read-only` | false |
 | **BACNETCTL_SERVER_VENDOR_ID** | string | **`server run`**: vendor identifier | `--vendor-id` | from the device file, or 999 |
@@ -984,7 +1007,7 @@ Without `--priority` a device takes the lowest, 16, which a control program norm
 
 ### Texts show up as garbage
 
-BACnet character strings come in several character sets. bacnetctl converts UTF-8, UCS-2, UCS-4 and ISO 8859-1 (Latin-1) to UTF-8. The two legacy double-byte sets (IBM/Microsoft DBCS and JIS X 0208) are not converted: their octets are shown as they are. Strings that `write` sends are UTF-8, which some older devices refuse (`character-set-not-supported`).
+BACnet character strings come in several character sets. bacnetctl converts UTF-8, UCS-2, UCS-4 and ISO 8859-1 (Latin-1) to UTF-8. The two legacy double-byte sets (IBM/Microsoft DBCS and JIS X 0208) are not converted: their octets are shown as they are (in text and table output, an octet that is not UTF-8 as `\xNN`). Strings that `write` sends are UTF-8, which some older devices refuse (`character-set-not-supported`).
 
 ### What do the numbers after a name mean?
 

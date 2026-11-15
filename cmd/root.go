@@ -94,7 +94,7 @@ stderr. Exit codes are stable: see docs/exitcodes.md.`,
 	add(groupTools, newDecodeCmd(), newTypesCmd(), newPropertiesCmd(), newCompletionCmd(), newVersionCmd())
 	root.SetHelpCommandGroupID(groupTools)
 	// Every other flag and argument completes no file names, except these files.
-	cli.CompleteRest(root, map[string][]string{"config": {"json"}, "input": nil, "output": nil}, nil)
+	cli.CompleteRest(root, map[string][]string{"config": {"json"}, "input": nil, "output": nil, "password-file": nil}, nil)
 	return root
 }
 

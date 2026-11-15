@@ -13,6 +13,7 @@ import (
 	"github.com/otfabric/bacnetctl/internal/config"
 	"github.com/otfabric/bacnetctl/internal/types"
 	bacnet "github.com/otfabric/go-bacnet"
+	"github.com/otfabric/go-bacnet/bip"
 	"github.com/otfabric/go-bacnet/client"
 	"github.com/otfabric/go-bacnet/service"
 )
@@ -56,6 +57,41 @@ func collect(ctx context.Context, window time.Duration, done func() bool) error 
 		case <-tick.C:
 		}
 	}
+}
+
+// fromTarget reports whether an answer to a request sent to --target came from that
+// address: from the device there, or from the router there that passed it on. origin is
+// where the answer came from (through a BBMD, the address it was forwarded for), peer the
+// address that sent the datagram; the result shows the first, or the second when there is
+// no first. The socket hears more than the answers of the target: the I-Am and I-Have
+// broadcasts of other devices, and their answers to other clients.
+func fromTarget(ep, origin, peer bip.Endpoint) bool {
+	if !origin.IsValid() {
+		origin = peer
+	}
+	return origin.Equal(ep)
+}
+
+// devicesFrom returns the I-Am answers the socket heard from ep.
+func (s *Session) devicesFrom(ep bip.Endpoint) []client.DeviceObservation {
+	var out []client.DeviceObservation
+	for _, o := range s.Devices() {
+		if fromTarget(ep, o.Origin, o.ImmediatePeer) {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+// objectsFrom returns the I-Have answers the socket heard from ep.
+func (s *Session) objectsFrom(ep bip.Endpoint) []client.ObjectObservation {
+	var out []client.ObjectObservation
+	for _, o := range s.Objects() {
+		if fromTarget(ep, o.Origin, o.ImmediatePeer) {
+			out = append(out, o)
+		}
+	}
+	return out
 }
 
 func ms(d time.Duration) float64 {
@@ -117,16 +153,17 @@ func Discover(ctx context.Context, cfg *config.DiscoverConfig, logw io.Writer) (
 		if err := s.SendWhoIs(ctx, ep, false, opts); err != nil {
 			return nil, WrapError(err)
 		}
-		// One device answers a Who-Is sent to its own address: stop at its I-Am. A router
-		// asked for a network behind it passes on as many answers as there are devices.
+		// Only the answers that come from the target count. One device answers a Who-Is
+		// sent to its own address: stop at its I-Am. A router asked for a network behind
+		// it passes on as many answers as there are devices.
 		var first func() bool
 		if network.Scope() != bacnet.AddressRemoteBroadcast && network.Scope() != bacnet.AddressGlobalBroadcast {
-			first = func() bool { return len(s.Devices()) > 0 }
+			first = func() bool { return len(s.devicesFrom(ep)) > 0 }
 		}
 		if err := collect(ctx, opts.Window, first); err != nil {
 			return nil, WrapError(err)
 		}
-		found = s.Devices()
+		found = s.devicesFrom(ep)
 	} else {
 		if found, err = s.Discover(ctx, opts); err != nil {
 			return nil, WrapError(err)
@@ -273,14 +310,15 @@ func WhoHas(ctx context.Context, cfg *config.WhoHasConfig, logw io.Writer) (*typ
 		if err := s.SendWhoHas(ctx, ep, false, opts); err != nil {
 			return nil, WrapError(err)
 		}
+		// Only the answers that come from the target count, as for discover.
 		var first func() bool
 		if network.Scope() != bacnet.AddressRemoteBroadcast && network.Scope() != bacnet.AddressGlobalBroadcast {
-			first = func() bool { return len(s.Objects()) > 0 }
+			first = func() bool { return len(s.objectsFrom(ep)) > 0 }
 		}
 		if err := collect(ctx, opts.Window, first); err != nil {
 			return nil, WrapError(err)
 		}
-		found = s.Objects()
+		found = s.objectsFrom(ep)
 	} else {
 		if found, err = s.DiscoverObjects(ctx, opts); err != nil {
 			return nil, WrapError(err)

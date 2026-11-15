@@ -194,7 +194,7 @@ func eventLogRecord(position uint32, rec service.EventLogRecord) types.LogRecord
 			ev.FromState = eventStateName(*n.FromState)
 		}
 		if n.MessageText != nil {
-			ev.Message = n.MessageText.Value
+			ev.Message = Text(*n.MessageText)
 		}
 		out.Event = ev
 	}

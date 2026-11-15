@@ -50,13 +50,14 @@ When no acknowledgement arrives for one of these requests, the device may or may
 
 A device can ask for a password in ReinitializeDevice and DeviceCommunicationControl. BACnet sends it as plain text in the request: anyone who can capture the traffic can read it. Treat such a password as a guard against accidents, not as a secret.
 
-- Give it with `--password`, or with the environment variable `BACNETCTL_PASSWORD`, which keeps it out of the shell history and the process list
+- Give it in a file, `--password-file FILE` or `--password-file -` (stdin), or with the environment variable `BACNETCTL_PASSWORD_FILE` (the file) or `BACNETCTL_PASSWORD` (the password). These keep it out of the shell history and the process list. Keep the file readable by its owner only. One line break at its end is not part of the password; a file of more than 4096 octets is refused before anything is sent
+- `--password` still works but is deprecated: it puts the password on the command line, where the shell history and the process list keep it, and bacnetctl warns about it on stderr. Both flags, or both variables, are refused
 - bacnetctl never prints the password: not in results, not in errors, not with `--debug`, and not in `--help` (the variable is read when the command runs, not shown as the default of the flag)
 - `decode` does not show the password of a decoded device management request either; the hex you give it still contains it
 
 ### Commands That Are Read-Only but Not Invisible
 
-- **`discover`**, **`whohas`** and **`router list`** broadcast. Every device on the network, and on the networks behind its routers and BBMDs, receives the request, and many answer. On a large or fragile network (MS/TP segments behind routers) a global Who-Is causes a burst of traffic: limit it with `--low` / `--high`, `--network` or `--target`
+- **`discover`**, **`whohas`** and **`router list`** broadcast. Every device on the network, and on the networks behind its routers and BBMDs, receives the request, and many answer. On a large or fragile network (MS/TP segments behind routers) a global Who-Is causes a burst of traffic: limit it with `--low` / `--high`, `--network` or `--target`. With `--target`, only the answers that come from the target's address are listed; an answer from another address is left out
 - **`--bbmd`** registers this computer as a foreign device with a BBMD. The registration appears in the BBMD's foreign device table and lapses with its time-to-live
 - **`monitor`** creates subscriptions on a device, which has a limited number of them. bacnetctl cancels its subscriptions when it ends; if it is killed, they lapse with their lifetime (`--lifetime`)
 - **`objects`**, **`describe`** and **`trend --all`** send many requests. A small controller serves them at the expense of its other communication
@@ -72,7 +73,7 @@ A device can ask for a password in ReinitializeDevice and DeviceCommunicationCon
 `server run` serves one BACnet device with go-bacnet's server. It binds UDP port 47808 on **all network interfaces** unless `--listen` and `--port` say otherwise, broadcasts an I-Am when it starts, and answers every client that reaches it.
 
 - **Anyone who reaches it can change it.** Writes, CreateObject, DeleteObject, AtomicWriteFile, AddListElement and RemoveListElement are carried out for any client. `--read-only` refuses every write (write-access-denied) and delete (object-deletion-not-permitted). Every write and delete is printed as a record, with the value the client sent, refused or not
-- **Device management.** Without `--password`, DeviceCommunicationControl and ReinitializeDevice are accepted from anyone: with disable-initiation a client stops the served device from initiating messages (I-Am, COV and event notifications) for a duration or until enabled again. DISABLE is refused with service-request-denied, as go-bacnet's [server support table](https://github.com/otfabric/go-bacnet/blob/main/docs/SERVER_SUPPORT.md) records. ReinitializeDevice is acknowledged and printed; the process does not restart. The password travels in clear text like any BACnet password (see above); give it with `BACNETCTL_SERVER_PASSWORD` to keep it out of the shell history. bacnetctl never prints it
+- **Device management.** Without `--password`, DeviceCommunicationControl and ReinitializeDevice are accepted from anyone: with disable-initiation a client stops the served device from initiating messages (I-Am, COV and event notifications) for a duration or until enabled again. DISABLE is refused with service-request-denied, as go-bacnet's [server support table](https://github.com/otfabric/go-bacnet/blob/main/docs/SERVER_SUPPORT.md) records. ReinitializeDevice is acknowledged and printed; the process does not restart. The password travels in clear text like any BACnet password (see above); give it with `--password-file`, `BACNETCTL_SERVER_PASSWORD_FILE` or `BACNETCTL_SERVER_PASSWORD` to keep it out of the shell history (`--password` is deprecated). bacnetctl never prints it
 - **Identity.** A device instance must be unique in a BACnet internetwork. A served device with the instance of a real one confuses every client that finds both. Keep it on loopback (`--listen 127.0.0.1`) or a test network, and pick an instance with `--instance`
 - **BBMD.** With `--bbmd` it also forwards broadcasts to the BBMDs of `--bdt` and, unless `--no-foreign-devices`, accepts foreign device registrations from any address. Broadcasts from that subnet then reach the peers, and the other way round
 - **Bounds.** Requests are decoded under go-bacnet's limits: `--max-apdu` and `--max-segments` bound what a client can make it reassemble. A device file is read up to 16 MiB, and one that cannot be served is refused before anything is bound
@@ -81,7 +82,8 @@ A device can ask for a password in ReinitializeDevice and DeviceCommunicationCon
 ### Output
 
 - Command output contains device addresses, object names, process values and network topology, which may be sensitive operational data. Be careful when storing or sharing it
-- `file get` writes what the device sends to the path you name, and overwrites an existing file. `--max-size` bounds it
+- The strings of a device or a client (names, descriptions, character string values, messages) are what it sent. In text and table output, their control characters, the bidirectional controls and octets that are not UTF-8 are written as escapes (`\x1b`, `\n`, `\u202e`, `\xff`), so that what is printed is shown and does not act on the terminal. JSON output keeps the strings as they are: a program that shows them on a terminal has to do the same
+- `file get` writes what the device sends to the path you name, and overwrites an existing file. `--max-size` bounds it (16 MiB by default, at most 4294967295 octets, on 32-bit platforms too); a larger file is not written
 - `--debug` logs the diagnostics of the BACnet client to stderr: addresses and message kinds, no payloads
 
 ### Privileges

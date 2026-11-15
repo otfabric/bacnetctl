@@ -25,8 +25,8 @@ through the router: use the router's address as --device, with --network and --m
 the other commands. "bacnetctl discover" shows both for every device it finds.
 
 The question is a local broadcast, and the answers come by broadcast to UDP port 47808,
-which this command binds. --target asks one router instead; --network asks only for the
-way to one network.`,
+which this command binds. --target asks one router instead, and lists only the networks
+that router announces; --network asks only for the way to one network.`,
 		Example: `
   # Which networks are there, and through which routers?
   bacnetctl router list

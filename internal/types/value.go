@@ -70,12 +70,15 @@ func (v Value) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-// String returns the value as text, with its unit when it has one.
+// String returns the value as text, with its unit when it has one. The control characters
+// a string holds are written as escapes ([TerminalSafe]): String is what text and table
+// output show.
 func (v Value) String() string {
+	text := TerminalSafe(v.Text)
 	if v.Unit != "" {
-		return v.Text + " " + v.Unit
+		return text + " " + v.Unit
 	}
-	return v.Text
+	return text
 }
 
 // TextOf returns the text of v, or a dash when there is no value.
