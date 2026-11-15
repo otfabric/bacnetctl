@@ -81,6 +81,8 @@ Examples:
 - Tests must not write files into the repository: use `t.TempDir()`
 - Do not synchronize with sleeps: wait for what the device saw (`AwaitRequest`, `AwaitSubscriptions`) with a deadline. Short timeouts belong only where a timeout is what is tested
 - Keep tests fast and race-clean; CI runs them with `-race` and a 120 s per-package timeout
+- CI also runs every test as linux/386 (job "Tests on linux/386"), where `int` has 32 bits as on the released linux/armv7 build. Do size and index arithmetic on a `uint32` or a length in 64 bits, and add the values past 2^31 to the boundary table. On Linux amd64, `GOARCH=386 go test ./...` runs the same tests locally
+- CI runs `make e2e` (job "End-to-end tests of the built binary"): the suite in `e2e/` against the built binary. Run it when you change the command line
 - Whole-module statement coverage must stay at or above 85% (`make coverage`)
 - The simulated device is built from the codecs of go-bacnet, so a test against it proves the command, not interoperability. If your change affects what goes on the wire, verify against a real device or another stack when possible, and say in the pull request what you tested against
 

@@ -25,7 +25,9 @@ By default the Who-Is is a global broadcast: it reaches the local IP subnet and,
 BACnet routers, the networks behind them. IP routers do not pass broadcasts on. To reach
 devices on another IP subnet, either register with a BBMD there (--bbmd) or send the
 Who-Is to one address (--target). --target also works where broadcasts are filtered, and
-through a Docker port mapping.
+through a Docker port mapping. With --target, only the answers that come from that
+address are listed: the device there, and the devices behind it if it is a router. A
+device elsewhere that answers by broadcast at the same time is left out.
 
 Devices answer by broadcast to UDP port 47808, so this command binds that port. Only one
 program on a host can hold it: if another BACnet program is running, discover reports
@@ -89,8 +91,9 @@ type:instance). The answer names the device, the object identifier and the objec
 this is how to find which device holds "AHU-1 Supply Temp" without reading every device.
 
 Like discover, this is a broadcast unless --target is given, the answers come by broadcast
-to UDP port 47808, and --bbmd reaches another IP subnet. Not every device implements
-Who-Has: a device that stays silent may still have the object.`,
+to UDP port 47808, and --bbmd reaches another IP subnet. With --target, only the answers
+that come from that address are listed. Not every device implements Who-Has: a device
+that stays silent may still have the object.`,
 		Example: `
   # Which device has an object with this name?
   bacnetctl whohas --name "AHU-1 Supply Temp"

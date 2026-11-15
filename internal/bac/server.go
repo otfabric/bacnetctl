@@ -107,7 +107,7 @@ func ParseServer(cfg *config.ServerRunConfig, password string) (ServerRequest, e
 		return req, errors.New("--max-segments 1: use 2-255, or 0 for no segmentation")
 	}
 	if len(password) > maxServerPassword {
-		return req, fmt.Errorf("--password: at most %d octets", maxServerPassword)
+		return req, fmt.Errorf("the password (--password-file, --password): at most %d octets", maxServerPassword)
 	}
 	if err := parseBBMD(cfg, &req); err != nil {
 		return req, err

@@ -71,9 +71,10 @@ var unitSymbols = map[uint32]string{
 	170: "F", 171: "H", 173: "S", 175: "T", 178: "Wb", 179: "cd", 186: "kg/m³",
 }
 
-// UnitName returns the name of an engineering unit.
+// UnitName returns the name of an engineering unit, or its number when it has none. The
+// comparison is made in 64 bits, so that it holds for every uint32 on every platform.
 func UnitName(u uint32) string {
-	if int(u) < len(unitNames) {
+	if uint64(u) < uint64(len(unitNames)) {
 		return unitNames[u]
 	}
 	return strconv.FormatUint(uint64(u), 10)
@@ -182,8 +183,10 @@ func EnumName(objType bacnet.ObjectType, prop bacnet.PropertyIdentifier, v uint3
 	}
 }
 
+// nameAt returns names[v], or "" for a value past the end. The comparison is made in 64
+// bits, so that it holds for every uint32 on every platform.
 func nameAt(names []string, v uint32) string {
-	if int(v) < len(names) {
+	if uint64(v) < uint64(len(names)) {
 		return names[v]
 	}
 	return ""

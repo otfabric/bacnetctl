@@ -95,12 +95,16 @@ func FileGet(ctx context.Context, cfg *config.FileGetConfig, objectArg string, s
 		return nil, err
 	}
 	start := time.Now()
-	// One octet more than allowed, so that a file of exactly --max-size is not refused.
-	data, err := s.ReadFileStream(ctx, target, object, client.FileReadOptions{ChunkSize: cfg.Chunk, MaxTotal: int(cfg.MaxSize) + 1})
-	if err != nil && len(data) <= int(cfg.MaxSize) {
+	// One octet more than allowed, so that a file of exactly --max-size is not refused. The
+	// arithmetic is in 64 bits: --max-size goes up to 2^32-1, past the int of a 32-bit
+	// platform, where the read is bounded by the largest int instead (a file object is at
+	// most 2^31-1 octets long anyway).
+	limit := int64(cfg.MaxSize)
+	data, err := s.ReadFileStream(ctx, target, object, client.FileReadOptions{ChunkSize: cfg.Chunk, MaxTotal: int(min(limit+1, math.MaxInt))})
+	if err != nil && int64(len(data)) <= limit {
 		return nil, WrapError(err)
 	}
-	if len(data) > int(cfg.MaxSize) {
+	if int64(len(data)) > limit {
 		return nil, errs.InvalidInput(errs.CodeInvalidInput,
 			fmt.Sprintf("the file is larger than --max-size (%d octets): nothing was written", cfg.MaxSize), err)
 	}

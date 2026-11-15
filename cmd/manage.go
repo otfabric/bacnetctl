@@ -4,7 +4,6 @@ package cmd
 
 import (
 	"context"
-	"os"
 
 	"github.com/otfabric/bacnetctl/internal/bac"
 	"github.com/otfabric/bacnetctl/internal/cli"
@@ -13,31 +12,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// passwordEnv is the environment variable of --password. The variable is read when the
-// command runs, never when its flags are defined: the default of a flag is printed by
-// --help.
-const passwordEnv = "BACNETCTL_PASSWORD"
+// passwordEnv and passwordFileEnv are the environment variables of --password and
+// --password-file. They are read when the command runs, never when its flags are defined:
+// the default of a flag is printed by --help.
+const (
+	passwordEnv     = "BACNETCTL_PASSWORD"
+	passwordFileEnv = "BACNETCTL_PASSWORD_FILE"
+)
 
-// manageFlags adds --yes-i-am-sure and --password to cmd.
+// manageFlags adds --yes-i-am-sure, --password-file and --password to cmd.
 func manageFlags(cmd *cobra.Command, sure *bool) {
 	cmd.Flags().BoolVar(sure, bac.SureFlag, false, "Confirm that this device may be restarted or silenced (required)")
-	cmd.Flags().String("password", "", "Password of the device, if it asks for one; it is sent in clear text and never printed [env: "+passwordEnv+"]")
+	passwordFlags(cmd, "Password of the device, if it asks for one; it is sent in clear text", passwordEnv, passwordFileEnv)
 }
 
-// password returns the password of an invocation: the flag, or the environment variable.
-func password(cmd *cobra.Command) string {
-	if f := cmd.Flags().Lookup("password"); f != nil && f.Changed {
-		return f.Value.String()
+// managePassword checks the confirmation, then reads the password of a device management
+// command: nothing is read without --yes-i-am-sure.
+func managePassword(cmd *cobra.Command, what string, sure bool) (string, error) {
+	if !sure {
+		return "", bac.Unconfirmed(what)
 	}
-	return os.Getenv(passwordEnv)
+	return password(cmd, passwordEnv, passwordFileEnv)
 }
 
 const manageWarning = `The command refuses to run without --yes-i-am-sure, and has sent nothing then. The
 request is sent exactly once: when no answer arrives the outcome is unknown (exit code 5,
 error code outcome_unknown), and the device may well have carried it out.
 
-A device can ask for a password (--password, or BACNETCTL_PASSWORD). BACnet sends it in
-clear text. bacnetctl never prints it.`
+A device can ask for a password: give it with --password-file (a file, or - for stdin) or
+BACNETCTL_PASSWORD, which keep it out of the shell history and the process list
+(BACNETCTL_PASSWORD_FILE names a file). --password still works and is deprecated. BACnet
+sends the password in clear text. bacnetctl never prints it.`
 
 func newReinitializeCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -62,8 +67,8 @@ STATE is what the device is asked to do:
   # Warm start a device
   bacnetctl reinitialize warmstart --device 192.168.1.20 --yes-i-am-sure
 
-  # Cold start with the password from the environment
-  BACNETCTL_PASSWORD=... bacnetctl reinitialize coldstart --device 192.168.1.20 --yes-i-am-sure
+  # Cold start with the password from a file
+  bacnetctl reinitialize coldstart --device 192.168.1.20 --yes-i-am-sure --password-file ~/.bacnet-password
 `,
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: bac.ReinitializeStates(),
@@ -73,9 +78,14 @@ STATE is what the device is asked to do:
 	manageFlags(cmd, &cfg.Sure)
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		cfg.Debug = cli.Debug(cmd)
-		pw := password(cmd)
+		var pw string
 		return runner.RunFormattedChecked(cmd, cfg.OutputFormat,
-			func() error { return bac.CheckReinitialize(&cfg, args[0], pw) },
+			func() (err error) {
+				if pw, err = managePassword(cmd, "reinitialize", cfg.Sure); err != nil {
+					return err
+				}
+				return bac.CheckReinitialize(&cfg, args[0], pw)
+			},
 			func(ctx context.Context) (any, error) {
 				return bac.Reinitialize(ctx, &cfg, args[0], pw, cmd.ErrOrStderr())
 			})
@@ -118,9 +128,14 @@ it the device stays silent until it is enabled or restarted.
 	manageFlags(cmd, &cfg.Sure)
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		cfg.Debug = cli.Debug(cmd)
-		pw := password(cmd)
+		var pw string
 		return runner.RunFormattedChecked(cmd, cfg.OutputFormat,
-			func() error { return bac.CheckCommControl(&cfg, args[0], pw) },
+			func() (err error) {
+				if pw, err = managePassword(cmd, "comm-control", cfg.Sure); err != nil {
+					return err
+				}
+				return bac.CheckCommControl(&cfg, args[0], pw)
+			},
 			func(ctx context.Context) (any, error) {
 				return bac.CommControl(ctx, &cfg, args[0], pw, cmd.ErrOrStderr())
 			})

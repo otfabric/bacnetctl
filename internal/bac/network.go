@@ -12,6 +12,7 @@ import (
 	"github.com/otfabric/bacnetctl/internal/config"
 	"github.com/otfabric/bacnetctl/internal/errs"
 	"github.com/otfabric/bacnetctl/internal/types"
+	"github.com/otfabric/go-bacnet/bip"
 	"github.com/otfabric/go-bacnet/client"
 	"github.com/otfabric/go-bacnet/service"
 )
@@ -112,10 +113,14 @@ func CheckRouterList(cfg *config.RouterListConfig) error {
 
 var routeStates = []string{"available", "busy", "rejected", "expired"}
 
-// routes lists every route the client has learned.
-func (s *Session) routes() []types.Router {
+// routes lists the routes the client has learned: every one, or with via those whose
+// router is via.
+func (s *Session) routes(via *bip.Endpoint) []types.Router {
 	out := []types.Router{}
 	for _, r := range s.AllRoutes() {
+		if via != nil && !r.NextHop.Equal(*via) {
+			continue
+		}
 		out = append(out, types.Router{Network: r.Network, Router: r.NextHop.String(), State: nameAt(routeStates, uint32(r.State))})
 	}
 	return out
@@ -136,6 +141,7 @@ func RouterList(ctx context.Context, cfg *config.RouterListConfig, logw io.Write
 	res := &types.RoutersResult{Mode: ModeBroadcast}
 	start := time.Now()
 	var first func() bool
+	var via *bip.Endpoint
 	if cfg.Target != "" {
 		ep, err := ResolveEndpoint(ctx, cfg.Target)
 		if err != nil {
@@ -145,8 +151,10 @@ func RouterList(ctx context.Context, cfg *config.RouterListConfig, logw io.Write
 		if err := s.WhoIsRouterToNetworkAt(ctx, ep, false, network); err != nil {
 			return nil, WrapError(err)
 		}
-		// One router answers with one message that lists all its networks.
-		first = func() bool { return len(s.routes()) > 0 }
+		// One router answers with one message that lists all its networks. Only the routes
+		// through the target count: the socket also hears what other routers announce.
+		via = &ep
+		first = func() bool { return len(s.routes(via)) > 0 }
 	} else if err := s.WhoIsRouterToNetwork(ctx, network); err != nil {
 		return nil, WrapError(err)
 	}
@@ -154,7 +162,7 @@ func RouterList(ctx context.Context, cfg *config.RouterListConfig, logw io.Write
 		return nil, WrapError(err)
 	}
 	res.DurationMS = ms(time.Since(start))
-	res.Routers = s.routes()
+	res.Routers = s.routes(via)
 	res.Count = len(res.Routers)
 	return res, nil
 }

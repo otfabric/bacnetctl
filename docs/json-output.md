@@ -13,6 +13,7 @@ These conventions are a **stable contract** for scripting. Field names are snake
 | Enumerations in results | the name and the number side by side: `event_state` / `event_state_id`, `segmentation` / `segmentation_id`, `units` / `units_id` |
 | Times | `timestamp`: when bacnetctl printed the record, RFC 3339 with milliseconds, UTC. That is not the time of arrival: a notification that waited in the queue is stamped later, and the order of records holds per object only. Time stamps **of the device** (`event_time`, `time_stamps`, the `timestamp` of a trend log record, `local_date`, `local_time`) are text as the device sent them: its local time, without a zone |
 | Durations | `duration_ms`, `rtt_ms` (numbers, milliseconds with fractions) |
+| Strings of a device or a client | as they were sent, control characters included. Only text and table output write those as escapes (`\x1b`, `\n`, `\u202e`) |
 | Repeated rows | `devices`, `objects`, `rows`, `properties`, `alarms`, `records`, `routers`, `entries`, `names`: **arrays of objects**, empty arrays rather than null |
 | A row that failed | `error` object (`kind`, `code`, `message`, `bacnet`); omitted when the row is fine |
 | Fatal error | one object `{"error": {"kind", "code", "message", "bacnet"}}` on stdout, nothing else, also when the invocation itself is wrong (an unknown flag, a missing argument) and JSON was asked for with `--format json` or `BACNETCTL_FORMAT=json`; see [exitcodes.md](exitcodes.md) |

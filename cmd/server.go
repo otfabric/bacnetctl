@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/otfabric/bacnetctl/internal/bac"
 	"github.com/otfabric/bacnetctl/internal/cli"
@@ -18,10 +17,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// serverPasswordEnv is the environment variable of the --password of `server run`. It is
-// not BACNETCTL_PASSWORD, which is the password the client commands send: setting that
-// one for a client must not lock the simulated device. It is read when the command runs.
-const serverPasswordEnv = "BACNETCTL_SERVER_PASSWORD"
+// serverPasswordEnv and serverPasswordFileEnv are the environment variables of the
+// --password and --password-file of `server run`. They are not BACNETCTL_PASSWORD and
+// BACNETCTL_PASSWORD_FILE, which give the password the client commands send: setting
+// those for a client must not lock the simulated device. They are read when the command
+// runs.
+const (
+	serverPasswordEnv     = "BACNETCTL_SERVER_PASSWORD"
+	serverPasswordFileEnv = "BACNETCTL_SERVER_PASSWORD_FILE"
+)
 
 func newServerCmd() *cobra.Command {
 	return group("server", "Serve a simulated BACnet/IP device",
@@ -40,7 +44,7 @@ func newServerRunCmd() *cobra.Command {
 or until --duration seconds have passed. The device answers Who-Is and Who-Has, reads and
 writes of its properties, COV subscriptions, alarms, trend logs, files, object creation and
 deletion, time synchronization, and DeviceCommunicationControl and ReinitializeDevice
-(with --password, only when they carry it). It sends an I-Am when it starts.
+(with a password, only when they carry it). It sends an I-Am when it starts.
 
 The device and its objects come from a device file (--config, JSON): see "bacnetctl
 server example" for one, and the README for the fields. The device fixtures of
@@ -81,18 +85,23 @@ A device password is never printed. BACnet sends it in clear text.`,
   bacnetctl server run --listen 192.168.1.10 --bbmd --bdt 10.0.20.1
 
   # Require a password for ReinitializeDevice and DeviceCommunicationControl
-  BACNETCTL_SERVER_PASSWORD=... bacnetctl server run --config device.json
+  bacnetctl server run --config device.json --password-file device-password.txt
 `,
 		Args: cobra.NoArgs,
 	}
 	cfg := config.ServerRunConfig{MaxAPDU: bac.DefaultServerMaxAPDU, MaxSegments: bac.DefaultServerMaxSegments, OutputFormat: textFormat}
 	wire(cmd, &cfg)
-	cmd.Flags().String("password", "", "Password that DeviceCommunicationControl and ReinitializeDevice must carry (at most 20 octets); never printed [env: "+serverPasswordEnv+"]")
+	passwordFlags(cmd, "Password that DeviceCommunicationControl and ReinitializeDevice must carry (at most 20 octets)", serverPasswordEnv, serverPasswordFileEnv)
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		cfg.Debug = cli.Debug(cmd)
-		pw := serverPassword(cmd)
+		var pw string
 		return runner.RunStream(cmd, cfg.OutputFormat,
-			func() error { return bac.CheckServer(&cfg, pw) },
+			func() (err error) {
+				if pw, err = password(cmd, serverPasswordEnv, serverPasswordFileEnv); err != nil {
+					return err
+				}
+				return bac.CheckServer(&cfg, pw)
+			},
 			func(ctx context.Context, out *format.StreamWriter) (int, error) {
 				summary, err := bac.Serve(ctx, &cfg, pw, cmd.ErrOrStderr(), func(r *types.ServerRecord) error { return out.Write(r) })
 				if summary.Address != "" {
@@ -105,14 +114,6 @@ A device password is never printed. BACnet sends it in clear text.`,
 			})
 	}
 	return cmd
-}
-
-// serverPassword returns the password of `server run`: the flag, or the environment.
-func serverPassword(cmd *cobra.Command) string {
-	if f := cmd.Flags().Lookup("password"); f != nil && f.Changed {
-		return f.Value.String()
-	}
-	return os.Getenv(serverPasswordEnv)
 }
 
 func newServerExampleCmd() *cobra.Command {

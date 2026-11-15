@@ -1,5 +1,32 @@
 # bacnetctl Releases
 
+## v0.9.0
+
+**Date:** 2026-11-15
+**Previous release:** v0.8.1
+
+Requires **Go 1.26+**. Built on go-bacnet v0.9.1. The exit codes and the JSON output are unchanged.
+
+### Added
+
+- **`--password-file FILE`** for `reinitialize`, `comm-control` and `server run`, and the variables **`BACNETCTL_PASSWORD_FILE`** and **`BACNETCTL_SERVER_PASSWORD_FILE`**: the password is read from a file (`-` = stdin), without the one line break at its end. A file of more than 4096 octets is refused. Giving both `--password` and `--password-file`, or setting both the password variable and the file variable, is refused (exit 3), so that neither is ignored without a word.
+- CI runs every test as linux/386, where `int` has 32 bits as on the linux/armv7 release, and runs `make e2e` against the built binary.
+
+### Fixed
+
+- **Enumerated values bacnetctl has no name for** (units, event states, system status, event and notify types) are written as their number by every command and on every platform.
+- **`trend`**: the message of an event log record is converted from its character set (UCS-2, UCS-4, ISO 8859-1) to UTF-8, as `events` already did. It was shown as the raw octets.
+- **`file get --max-size`** above 2147483647 works on 32-bit platforms: a file within the limit was refused there (exit 3). The limit is unchanged (16 MiB by default, up to 4294967295).
+- **`discover`, `whohas` and `router list` with `--target`** list only the answers that come from the target's address (the device there, or the devices and networks behind it when it is a router). An answer from another device that arrived during `--wait`, such as a broadcast I-Am, was listed as well. A target that does not answer now gives the documented empty result (exit 0) even when other devices answered. A `--target` that is a broadcast address, which was never documented, now lists nothing: broadcast, or use `--bbmd`, to ask a subnet.
+
+### Changed
+
+- **`--password` is deprecated** for `reinitialize`, `comm-control` and `server run`: it still works, and says on stderr that the password is on the command line and which flag or variable to use instead. stdout, the JSON output and the exit code are unchanged. `BACNETCTL_PASSWORD` and `BACNETCTL_SERVER_PASSWORD` are not deprecated.
+- **Text and table output write the control characters of a device's strings as escapes**: object names, descriptions, vendor and model names, character string values, event messages and decoded fields show `\x1b`, `\r`, `\n`, `\t`, `\u0080`-`\u009f`, the bidirectional controls `\u202a`-`\u202e` and `\u2066`-`\u2069`, and octets that are not UTF-8 as `\xNN`. A string with a line feed or a tab, which was printed as it was, is now one line with `\n` or `\t`. JSON output keeps the strings as the device sent them.
+- README documents how numbers are read today (nothing changes in this release): a numeric flag reads `010` as octal and `0x10` as hex, while its environment variable reads `010` as ten and refuses `0x10`; `unsigned:` and `signed:` read like the flags, `enum:` like the variables. Write numbers in decimal without a leading zero.
+
+---
+
 ## v0.8.1
 
 **Date:** 2026-11-15
