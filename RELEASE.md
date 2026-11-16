@@ -1,5 +1,18 @@
 # bacnetctl Releases
 
+## v0.9.1
+
+**Date:** 2026-11-16
+**Previous release:** v0.9.0
+
+No command or flag is added or changed.
+
+### Changed
+
+- Built on go-bacnet v0.10.0 (was v0.9.1) (go-bacnet RELEASE.md, v0.10.0). Its `### Breaking` entries concern `service.DecodeAuthRequest`, the form of context-tagged items in a decoded ReadRange acknowledgement, and the character set kept when a decoded text field is encoded again. bacnetctl reads trend and event logs through the library's typed log records, decodes no AuthRequest and encodes no decoded text field again, so its output does not change.
+
+---
+
 ## v0.9.0
 
 **Date:** 2026-11-15
