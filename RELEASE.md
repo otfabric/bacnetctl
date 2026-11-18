@@ -1,5 +1,21 @@
 # bacnetctl Releases
 
+## v0.10.0
+
+**Date:** 2026-11-19
+**Previous release:** v0.9.1
+
+No command or flag is added or changed; the exit codes and the JSON output are unchanged. A minor release because what `--bbmd` sees changes.
+
+### Changed
+
+- Built on go-bacnet v0.11.2 (was v0.10.0) (go-bacnet RELEASE.md, v0.11.0 to v0.11.2). For the tool this means:
+  - **`--bbmd`** (foreign device): the commands hear the network only through the BBMD. A foreign device neither sends nor processes a broadcast on its local subnet (ASHRAE 135 J.2.12, interpretation IC 135-2024-8), so `discover --bbmd` no longer lists a device that answers only on the local subnet. Run `discover` without `--bbmd` for the local subnet.
+  - **`--bbmd`**: a registration the BBMD does not answer is retried after 2, 4, 8, 16, then every 30 s, not after a full TTL, so a lost first registration is usually recovered within the command's time budget. A renewal whose answer is lost no longer interrupts broadcasts while the registration is still valid.
+  - The names of object types and properties that bacnetctl prints and parses come from its own tables, so they do not change.
+
+---
+
 ## v0.9.1
 
 **Date:** 2026-11-16
